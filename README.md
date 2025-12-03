@@ -1,50 +1,61 @@
 # Sinus Extraction - Image Segmentation
 
-מחברת Jupyter למימוש מודל Segmentation לזיהוי סינוסים בתמונות.
+Jupyter notebook for implementing a Segmentation model to detect sinuses in images.
 
-## שימוש ב-Google Colab
+## Usage in Google Colab
 
-### טעינת המחברת ישירות מ-GitHub:
+### Load the notebook directly from GitHub:
 
-1. פתח [Google Colab](https://colab.research.google.com/)
-2. לחץ על **File** → **Open notebook**
-3. בחר בכרטיסייה **GitHub**
-4. הדבק את כתובת ה-URL של המאגר:
+1. Open [Google Colab](https://colab.research.google.com/)
+2. Click **File** → **Open notebook**
+3. Select the **GitHub** tab
+4. Paste the repository URL:
    ```
-   https://github.com/YOUR_USERNAME/Sinus_Extraction
+   https://github.com/Net-AI-Git/Sinus-Extraction
    ```
-5. בחר את המחברת: `Segmentation_code_templates/ImageSegmentation_template.ipynb`
-6. לחץ על **Open**
+5. Select the notebook: `Segmentation_code_templates/ImageSegmentation_template.ipynb`
+6. Click **Open**
 
-### או השתמש בקישור ישיר:
+### Direct link to Colab:
 
-לאחר העלאת המחברת ל-GitHub, תוכל להשתמש בקישור ישיר:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Net-AI-Git/Sinus-Extraction/blob/main/Segmentation_code_templates/ImageSegmentation_template.ipynb)
+
+Or copy this link:
 ```
-https://colab.research.google.com/github/YOUR_USERNAME/Sinus_Extraction/blob/main/Segmentation_code_templates/ImageSegmentation_template.ipynb
+https://colab.research.google.com/github/Net-AI-Git/Sinus-Extraction/blob/main/Segmentation_code_templates/ImageSegmentation_template.ipynb
 ```
 
-## עדכון המחברת
+## Updating the Notebook
 
-כאשר תעשה שינויים במחברת ותעלה אותם ל-GitHub:
+When you make changes to the notebook and push them to GitHub:
 
-1. ב-Colab, לחץ על **File** → **Revert to last saved version** (אם יש שינויים לא שמורים)
-2. או רענן את הדף (F5) כדי לטעון את הגרסה החדשה מ-GitHub
+1. In Colab, click **File** → **Revert to last saved version** (if you have unsaved changes)
+2. Or refresh the page (F5) to load the new version from GitHub
 
-## דרישות
+## Requirements
 
-המחברת כוללת את כל הפקודות להתקנת החבילות הנדרשות. פשוט הרץ את התאים בסדר.
+The notebook includes all the commands to install the required packages. Simply run the cells in order.
 
-## מבנה הפרויקט
+## Project Structure
 
 ```
-Sinus_Extraction/
+Sinus-Extraction/
 └── Segmentation_code_templates/
     └── ImageSegmentation_template.ipynb
 ```
 
-## הערות
+## Features
 
-- המחברת מוכנה לשימוש ב-Colab עם GPU
-- כל הנתיבים מותאמים לסביבת Colab (`/content/`)
-- המחברת כוללת תצורת UNet עם ResNet18 backbone
+- Ready to use in Colab with GPU support
+- All paths are configured for Colab environment (`/content/`)
+- Includes UNet model configuration with ResNet18 backbone
+- Comprehensive logging system with HTML color formatting
+- Type-safe configuration using dataclasses
+- Custom exception handling for configuration errors
+
+## Notes
+
+- The notebook is optimized for grayscale image segmentation
+- Training from scratch (no pre-trained weights) for grayscale images
+- Includes data augmentation, custom dataset, and training pipeline
 
