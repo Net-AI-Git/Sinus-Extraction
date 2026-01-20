@@ -90,6 +90,120 @@ class StepSineParams(BaseModel):
     step_times: List[float] = Field(description="List of times at which to switch frequencies")
 
 
+class FreqJumpParams(BaseModel):
+    """
+    Parameters for frequency jump signal generation.
+    
+    Why: Encapsulates parameters needed to generate signals with sudden
+    frequency jumps. Using a Pydantic model ensures type safety and allows
+    validation of parameter ranges.
+    
+    What: A Pydantic BaseModel containing the number of jumps, jump times,
+    and frequencies for each segment. Creates signals with sharp frequency
+    transitions that appear as "dancing" in time-frequency representations.
+    
+    Attributes:
+        n_jumps: Number of frequency jumps. Typically 3-5.
+        jump_times: List of times at which frequency jumps occur.
+        freqs: List of frequencies for each segment (n_jumps + 1 frequencies).
+    """
+    n_jumps: int = Field(description="Number of frequency jumps")
+    jump_times: List[float] = Field(description="List of times at which frequency jumps occur")
+    freqs: List[float] = Field(description="List of frequencies for each segment")
+
+
+class SawtoothModParams(BaseModel):
+    """
+    Parameters for sawtooth modulation signal generation.
+    
+    Why: Encapsulates parameters needed to generate signals with sawtooth
+    frequency modulation. Using a Pydantic model ensures type safety and
+    allows validation.
+    
+    What: A Pydantic BaseModel containing modulation frequency, modulation
+    depth, and base frequency. Creates signals with linearly varying
+    frequency that creates sharp "dancing" patterns.
+    
+    Attributes:
+        mod_freq: Frequency of the sawtooth modulation in Hz.
+        mod_depth: Depth of frequency modulation (0-1 range).
+        base_freq: Base frequency around which modulation occurs in Hz.
+    """
+    mod_freq: float = Field(description="Frequency of sawtooth modulation in Hz")
+    mod_depth: float = Field(description="Depth of frequency modulation")
+    base_freq: float = Field(description="Base frequency in Hz")
+
+
+class SquareModParams(BaseModel):
+    """
+    Parameters for square wave modulation signal generation.
+    
+    Why: Encapsulates parameters needed to generate signals with square
+    wave frequency modulation. Using a Pydantic model ensures type safety
+    and allows validation.
+    
+    What: A Pydantic BaseModel containing modulation frequency, duty cycle,
+    modulation depth, and base frequency. Creates signals with abrupt frequency
+    changes that create sharp "dancing" patterns.
+    
+    Attributes:
+        mod_freq: Frequency of the square wave modulation in Hz.
+        duty_cycle: Duty cycle of the square wave (0-1 range).
+        mod_depth: Depth of frequency modulation (0-1 range).
+        base_freq: Base frequency around which modulation occurs in Hz.
+    """
+    mod_freq: float = Field(description="Frequency of square wave modulation in Hz")
+    duty_cycle: float = Field(description="Duty cycle of square wave (0-1)")
+    mod_depth: float = Field(description="Depth of frequency modulation")
+    base_freq: float = Field(description="Base frequency in Hz")
+
+
+class PhaseJumpParams(BaseModel):
+    """
+    Parameters for phase jump signal generation.
+    
+    Why: Encapsulates parameters needed to generate signals with phase
+    discontinuities. Using a Pydantic model ensures type safety and allows
+    validation.
+    
+    What: A Pydantic BaseModel containing number of jumps, jump times,
+    jump sizes, and base frequency. Creates signals with sudden phase
+    changes that create sharp transitions.
+    
+    Attributes:
+        n_jumps: Number of phase jumps. Typically 2-4.
+        jump_times: List of times at which phase jumps occur.
+        jump_sizes: List of phase jump sizes in radians.
+        base_freq: Base frequency of the signal in Hz.
+    """
+    n_jumps: int = Field(description="Number of phase jumps")
+    jump_times: List[float] = Field(description="List of times at which phase jumps occur")
+    jump_sizes: List[float] = Field(description="List of phase jump sizes in radians")
+    base_freq: float = Field(description="Base frequency in Hz")
+
+
+class AmplitudeModParams(BaseModel):
+    """
+    Parameters for amplitude modulation signal generation.
+    
+    Why: Encapsulates parameters needed to generate signals with amplitude
+    modulation. Using a Pydantic model ensures type safety and allows
+    validation.
+    
+    What: A Pydantic BaseModel containing modulation frequency, modulation
+    depth, and base frequency. Creates signals with time-varying amplitude
+    that creates dynamic "dancing" patterns.
+    
+    Attributes:
+        mod_freq: Frequency of amplitude modulation in Hz.
+        mod_depth: Depth of amplitude modulation (0-1 range).
+        base_freq: Base frequency of the signal in Hz.
+    """
+    mod_freq: float = Field(description="Frequency of amplitude modulation in Hz")
+    mod_depth: float = Field(description="Depth of amplitude modulation")
+    base_freq: float = Field(description="Base frequency in Hz")
+
+
 def sample_param(
     rng: np.random.Generator,
     low: float = 0.0,
@@ -142,9 +256,9 @@ def gen_poly_params(rng: np.random.Generator) -> PolyPhaseParams:
         a=sample_param(rng, low=-5.0, high=5.0),
         b=sample_param(rng, low=0.0, high=10.0),
         c=sample_param(rng, low=-2.0, high=2.0),
-        d=sample_param(rng, low=-1.0, high=1.0),
-        e=sample_param(rng, low=-0.5, high=0.5),
-        h=sample_param(rng, low=-0.2, high=0.2)
+        d=sample_param(rng, low=-2.0, high=2.0),
+        e=sample_param(rng, low=-1.0, high=1.0),
+        h=sample_param(rng, low=-0.5, high=0.5)
     )
 
 
@@ -168,9 +282,9 @@ def gen_coschirp_params(rng: np.random.Generator) -> CosChirpParams:
             coefficients within their valid ranges.
     """
     return CosChirpParams(
-        a=sample_param(rng, low=0.0, high=1.0),
-        b=sample_param(rng, low=0.0, high=1.0),
-        c=sample_param(rng, low=0.0, high=10.0)
+        a=sample_param(rng, low=0.0, high=2.0),
+        b=sample_param(rng, low=0.0, high=2.0),
+        c=sample_param(rng, low=0.0, high=20.0)
     )
 
 
@@ -215,3 +329,222 @@ def gen_step_sine_params(
     ]
     step_times.sort()
     return StepSineParams(freq_steps=freq_steps, step_times=step_times)
+
+
+def gen_freq_jump_params(
+    rng: np.random.Generator,
+    n_jumps: int = None,
+    freq_min: float = 1.0,
+    freq_max: float = 2000.0,
+    time_min: float = 0.25,
+    time_max: float = 1.75
+) -> FreqJumpParams:
+    """
+    Generate random frequency jump parameters.
+    
+    Why: Encapsulates the logic for sampling valid frequency jump parameters,
+    including number of jumps, jump times, and frequencies. This ensures
+    parameters are always within acceptable bounds and jump times are sorted.
+    
+    What: Samples n_jumps (3-5 if not provided), jump times from [time_min, time_max),
+    and n_jumps+1 frequencies from [freq_min, freq_max). Sorts jump times to ensure
+    they are in ascending order. Returns a FreqJumpParams object.
+    
+    Args:
+        rng: NumPy random number generator for reproducibility.
+        n_jumps: Number of frequency jumps. If None, randomly samples 3-5.
+        freq_min: Minimum frequency in Hz. Default 1.0.
+        freq_max: Maximum frequency in Hz. Default 2000.0.
+        time_min: Minimum jump time in seconds. Default 0.25.
+        time_max: Maximum jump time in seconds. Default 1.75.
+    
+    Returns:
+        FreqJumpParams: A FreqJumpParams object with randomly sampled parameters.
+    """
+    if n_jumps is None:
+        n_jumps = rng.integers(3, 6)
+    jump_times = [
+        sample_param(rng, low=time_min, high=time_max)
+        for _ in range(n_jumps)
+    ]
+    jump_times.sort()
+    freqs = [
+        sample_param(rng, low=freq_min, high=freq_max)
+        for _ in range(n_jumps + 1)
+    ]
+    return FreqJumpParams(n_jumps=n_jumps, jump_times=jump_times, freqs=freqs)
+
+
+def gen_sawtooth_mod_params(
+    rng: np.random.Generator,
+    mod_freq_range: tuple = (0.1, 10.0),
+    mod_depth_range: tuple = (0.1, 0.9),
+    base_freq_range: tuple = (1.0, 2000.0)
+) -> SawtoothModParams:
+    """
+    Generate random sawtooth modulation parameters.
+    
+    Why: Encapsulates the logic for sampling valid sawtooth modulation
+    parameters from their respective ranges. This ensures parameters are
+    always within acceptable bounds for signal generation.
+    
+    What: Samples modulation frequency, modulation depth, and base frequency
+    from uniform distributions over their respective ranges and returns a
+    SawtoothModParams object.
+    
+    Args:
+        rng: NumPy random number generator for reproducibility.
+        mod_freq_range: Tuple of (min, max) for modulation frequency in Hz.
+            Default (0.1, 10.0).
+        mod_depth_range: Tuple of (min, max) for modulation depth. Default (0.1, 0.9).
+        base_freq_range: Tuple of (min, max) for base frequency in Hz.
+            Default (1.0, 2000.0).
+    
+    Returns:
+        SawtoothModParams: A SawtoothModParams object with randomly sampled
+            parameters within their valid ranges.
+    """
+    mod_freq = sample_param(rng, low=mod_freq_range[0], high=mod_freq_range[1])
+    mod_depth = sample_param(rng, low=mod_depth_range[0], high=mod_depth_range[1])
+    base_freq = sample_param(rng, low=base_freq_range[0], high=base_freq_range[1])
+    return SawtoothModParams(
+        mod_freq=mod_freq,
+        mod_depth=mod_depth,
+        base_freq=base_freq
+    )
+
+
+def gen_square_mod_params(
+    rng: np.random.Generator,
+    mod_freq_range: tuple = (0.1, 10.0),
+    duty_cycle_range: tuple = (0.1, 0.9),
+    mod_depth_range: tuple = (0.1, 0.9),
+    base_freq_range: tuple = (1.0, 2000.0)
+) -> SquareModParams:
+    """
+    Generate random square wave modulation parameters.
+    
+    Why: Encapsulates the logic for sampling valid square wave modulation
+    parameters from their respective ranges. This ensures parameters are
+    always within acceptable bounds for signal generation.
+    
+    What: Samples modulation frequency, duty cycle, modulation depth, and
+    base frequency from uniform distributions over their respective ranges
+    and returns a SquareModParams object.
+    
+    Args:
+        rng: NumPy random number generator for reproducibility.
+        mod_freq_range: Tuple of (min, max) for modulation frequency in Hz.
+            Default (0.1, 10.0).
+        duty_cycle_range: Tuple of (min, max) for duty cycle. Default (0.1, 0.9).
+        mod_depth_range: Tuple of (min, max) for modulation depth. Default (0.1, 0.9).
+        base_freq_range: Tuple of (min, max) for base frequency in Hz.
+            Default (1.0, 2000.0).
+    
+    Returns:
+        SquareModParams: A SquareModParams object with randomly sampled
+            parameters within their valid ranges.
+    """
+    mod_freq = sample_param(rng, low=mod_freq_range[0], high=mod_freq_range[1])
+    duty_cycle = sample_param(rng, low=duty_cycle_range[0], high=duty_cycle_range[1])
+    mod_depth = sample_param(rng, low=mod_depth_range[0], high=mod_depth_range[1])
+    base_freq = sample_param(rng, low=base_freq_range[0], high=base_freq_range[1])
+    return SquareModParams(
+        mod_freq=mod_freq,
+        duty_cycle=duty_cycle,
+        mod_depth=mod_depth,
+        base_freq=base_freq
+    )
+
+
+def gen_phase_jump_params(
+    rng: np.random.Generator,
+    n_jumps: int = None,
+    base_freq_range: tuple = (1.0, 2000.0),
+    jump_size_range: tuple = (0.1, 2.0),
+    time_min: float = 0.25,
+    time_max: float = 1.75
+) -> PhaseJumpParams:
+    """
+    Generate random phase jump parameters.
+    
+    Why: Encapsulates the logic for sampling valid phase jump parameters,
+    including number of jumps, jump times, jump sizes, and base frequency.
+    This ensures parameters are always within acceptable bounds and jump
+    times are sorted.
+    
+    What: Samples n_jumps (2-4 if not provided), jump times from [time_min, time_max),
+    jump sizes from [jump_size_range], and base frequency from [base_freq_range].
+    Sorts jump times to ensure they are in ascending order. Returns a PhaseJumpParams
+    object.
+    
+    Args:
+        rng: NumPy random number generator for reproducibility.
+        n_jumps: Number of phase jumps. If None, randomly samples 2-4.
+        base_freq_range: Tuple of (min, max) for base frequency in Hz.
+            Default (1.0, 2000.0).
+        jump_size_range: Tuple of (min, max) for phase jump sizes in radians.
+            Default (0.1, 2.0).
+        time_min: Minimum jump time in seconds. Default 0.25.
+        time_max: Maximum jump time in seconds. Default 1.75.
+    
+    Returns:
+        PhaseJumpParams: A PhaseJumpParams object with randomly sampled parameters.
+    """
+    if n_jumps is None:
+        n_jumps = rng.integers(2, 5)
+    jump_times = [
+        sample_param(rng, low=time_min, high=time_max)
+        for _ in range(n_jumps)
+    ]
+    jump_times.sort()
+    jump_sizes = [
+        sample_param(rng, low=jump_size_range[0], high=jump_size_range[1])
+        for _ in range(n_jumps)
+    ]
+    base_freq = sample_param(rng, low=base_freq_range[0], high=base_freq_range[1])
+    return PhaseJumpParams(
+        n_jumps=n_jumps,
+        jump_times=jump_times,
+        jump_sizes=jump_sizes,
+        base_freq=base_freq
+    )
+
+
+def gen_amplitude_mod_params(
+    rng: np.random.Generator,
+    mod_freq_range: tuple = (0.1, 10.0),
+    mod_depth_range: tuple = (0.1, 0.9),
+    base_freq_range: tuple = (1.0, 2000.0)
+) -> AmplitudeModParams:
+    """
+    Generate random amplitude modulation parameters.
+    
+    Why: Encapsulates the logic for sampling valid amplitude modulation
+    parameters from their respective ranges. This ensures parameters are
+    always within acceptable bounds for signal generation.
+    
+    What: Samples modulation frequency, modulation depth, and base frequency
+    from uniform distributions over their respective ranges and returns an
+    AmplitudeModParams object.
+    
+    Args:
+        rng: NumPy random number generator for reproducibility.
+        mod_freq_range: Tuple of (min, max) for modulation frequency in Hz.
+            Default (0.1, 10.0).
+        mod_depth_range: Tuple of (min, max) for modulation depth. Default (0.1, 0.9).
+        base_freq_range: Tuple of (min, max) for base frequency in Hz.
+            Default (1.0, 2000.0).
+    
+    Returns:
+        AmplitudeModParams: An AmplitudeModParams object with randomly sampled
+            parameters within their valid ranges.
+    """
+    mod_freq = sample_param(rng, low=mod_freq_range[0], high=mod_freq_range[1])
+    mod_depth = sample_param(rng, low=mod_depth_range[0], high=mod_depth_range[1])
+    base_freq = sample_param(rng, low=base_freq_range[0], high=base_freq_range[1])
+    return AmplitudeModParams(
+        mod_freq=mod_freq,
+        mod_depth=mod_depth,
+        base_freq=base_freq
+    )

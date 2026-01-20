@@ -22,12 +22,22 @@ from .config import SyntheticDataConfig
 from .signal_models import (
     gen_poly_params,
     gen_coschirp_params,
-    gen_step_sine_params
+    gen_step_sine_params,
+    gen_freq_jump_params,
+    gen_sawtooth_mod_params,
+    gen_square_mod_params,
+    gen_phase_jump_params,
+    gen_amplitude_mod_params
 )
 from .signal_generators import (
     poly_signal_and_if,
     coschirp_signal_and_if,
-    step_sine_signal_and_if
+    step_sine_signal_and_if,
+    freq_jump_signal_and_if,
+    sawtooth_mod_signal_and_if,
+    square_mod_signal_and_if,
+    phase_jump_signal_and_if,
+    amplitude_mod_signal_and_if
 )
 from .signal_processing import awgn, stft_mag_128x8000
 from .tf_representation import ifs_to_ideal_tf, generate_binary_mask
@@ -75,6 +85,10 @@ class Sample(BaseModel):
     ifs_norm: np.ndarray = Field(description="Normalized IF matrix")
     tf_ideal: np.ndarray = Field(description="Ideal TF representation")
     binary_mask: np.ndarray = Field(description="Binary mask")
+    signal_types: List[str] = Field(
+        default=[],
+        description="List of signal type names, one per component"
+    )
 
 
 def params_valid(
@@ -107,11 +121,53 @@ def params_valid(
     return True
 
 
+def _determine_signal_type(
+    component_index: int,
+    n_components: int
+) -> str:
+    """
+    Determine signal type based on component index.
+    
+    Why: Provides a consistent mapping from component index to signal type,
+    enabling scenario detection and organized signal generation.
+    
+    What: Maps component indices to signal types:
+    - 0, 1: poly_phase
+    - 2: cos_chirp
+    - 3: step_sine
+    - 4: freq_jump
+    - 5: sawtooth_mod
+    - 6: square_mod
+    - 7: phase_jump
+    - 8: amplitude_mod
+    
+    Args:
+        component_index: Index of the component (0-based).
+        n_components: Total number of components.
+    
+    Returns:
+        str: Signal type name.
+    """
+    signal_map = {
+        0: 'poly_phase',
+        1: 'poly_phase',
+        2: 'cos_chirp',
+        3: 'step_sine',
+        4: 'freq_jump',
+        5: 'sawtooth_mod',
+        6: 'square_mod',
+        7: 'phase_jump',
+        8: 'amplitude_mod'
+    }
+    return signal_map.get(component_index, 'poly_phase')
+
+
 def _generate_component_signals(
     rng: np.random.Generator,
     n_components: int,
-    t: np.ndarray
-) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    t: np.ndarray,
+    signal_scenario: Optional[str] = None
+) -> Tuple[List[np.ndarray], List[np.ndarray], List[str]]:
     """
     Generate signals and IFs for each component type.
     
@@ -119,53 +175,76 @@ def _generate_component_signals(
     This function handles the conditional logic for generating different numbers
     of components with different signal types.
     
-    What: Generates signals based on n_components:
+    What: Generates signals based on n_components (1-8):
     - 1-2 components: polynomial phase signals
     - 3 components: 2 polynomial + 1 cosine chirp
     - 4 components: 2 polynomial + 1 cosine chirp + 1 step sine
-    Returns lists of signal arrays and IF arrays.
+    - 5+ components: adds new signal types in order
+    Returns lists of signal arrays, IF arrays, and signal type names.
     
     Args:
         rng: NumPy random number generator.
-        n_components: Number of components to generate (1-4).
+        n_components: Number of components to generate (1-8).
         t: Time vector in seconds.
+        signal_scenario: Optional signal scenario name. If provided, generates
+            only that signal type. Default None.
     
     Returns:
-        Tuple[List[np.ndarray], List[np.ndarray]]: A tuple containing:
+        Tuple[List[np.ndarray], List[np.ndarray], List[str]]: A tuple containing:
             - List of signal arrays, one per component.
             - List of IF arrays in Hz, one per component.
+            - List of signal type names, one per component.
     
     Raises:
-        ValueError: If n_components is not in [1, 4].
+        ValueError: If n_components is not in [1, 8].
     """
-    if not 1 <= n_components <= 4:
+    if not 1 <= n_components <= 8:
         raise ValueError(
-            f"Number of components must be in [1, 4], got {n_components}."
+            f"Number of components must be in [1, 8], got {n_components}."
         )
     
-    xs, IFs = [], []
-    if n_components >= 1:
-        p1 = gen_poly_params(rng)
-        x1, IF1 = poly_signal_and_if(t, p1)
-        xs.append(x1)
-        IFs.append(IF1)
-    if n_components >= 2:
-        p2 = gen_poly_params(rng)
-        x2, IF2 = poly_signal_and_if(t, p2)
-        xs.append(x2)
-        IFs.append(IF2)
-    if n_components >= 3:
-        q = gen_coschirp_params(rng)
-        x3, IF3 = coschirp_signal_and_if(t, q)
-        xs.append(x3)
-        IFs.append(IF3)
-    if n_components == 4:
-        step_params = gen_step_sine_params(rng)
-        x4, IF4 = step_sine_signal_and_if(t, step_params)
-        xs.append(x4)
-        IFs.append(IF4)
+    xs, IFs, signal_types = [], [], []
     
-    return xs, IFs
+    for i in range(n_components):
+        if signal_scenario:
+            sig_type = signal_scenario
+        else:
+            sig_type = _determine_signal_type(i, n_components)
+        
+        if sig_type == 'poly_phase':
+            p = gen_poly_params(rng)
+            x, IF = poly_signal_and_if(t, p)
+        elif sig_type == 'cos_chirp':
+            q = gen_coschirp_params(rng)
+            x, IF = coschirp_signal_and_if(t, q)
+        elif sig_type == 'step_sine':
+            step_params = gen_step_sine_params(rng)
+            x, IF = step_sine_signal_and_if(t, step_params)
+        elif sig_type == 'freq_jump':
+            jump_params = gen_freq_jump_params(rng)
+            x, IF = freq_jump_signal_and_if(t, jump_params)
+        elif sig_type == 'sawtooth_mod':
+            sawtooth_params = gen_sawtooth_mod_params(rng)
+            x, IF = sawtooth_mod_signal_and_if(t, sawtooth_params)
+        elif sig_type == 'square_mod':
+            square_params = gen_square_mod_params(rng)
+            x, IF = square_mod_signal_and_if(t, square_params)
+        elif sig_type == 'phase_jump':
+            phase_params = gen_phase_jump_params(rng)
+            x, IF = phase_jump_signal_and_if(t, phase_params)
+        elif sig_type == 'amplitude_mod':
+            amp_params = gen_amplitude_mod_params(rng)
+            x, IF = amplitude_mod_signal_and_if(t, amp_params)
+        else:
+            p = gen_poly_params(rng)
+            x, IF = poly_signal_and_if(t, p)
+            sig_type = 'poly_phase'
+        
+        xs.append(x)
+        IFs.append(IF)
+        signal_types.append(sig_type)
+    
+    return xs, IFs, signal_types
 
 
 def draw_valid_params_for_components(
@@ -173,8 +252,9 @@ def draw_valid_params_for_components(
     n_components: int,
     t: np.ndarray,
     fmax: float,
-    max_tries: int = 200
-) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    max_tries: int = 200,
+    signal_scenario: Optional[str] = None
+) -> Tuple[List[np.ndarray], List[np.ndarray], List[str]]:
     """
     Sample parameters until valid IF ranges are obtained.
     
@@ -188,25 +268,29 @@ def draw_valid_params_for_components(
     
     Args:
         rng: NumPy random number generator.
-        n_components: Number of components to generate (1-4).
+        n_components: Number of components to generate (1-8).
         t: Time vector in seconds.
         fmax: Maximum frequency (Nyquist) in Hz.
         max_tries: Maximum number of attempts to find valid parameters.
             Default 200.
+        signal_scenario: Optional signal scenario name. Default None.
     
     Returns:
-        Tuple[List[np.ndarray], List[np.ndarray]]: A tuple containing:
+        Tuple[List[np.ndarray], List[np.ndarray], List[str]]: A tuple containing:
             - List of signal arrays, one per component.
             - List of IF arrays in Hz, one per component.
+            - List of signal type names, one per component.
     
     Raises:
         SignalGenerationError: If valid parameters cannot be found within
             max_tries attempts.
     """
     for attempt in range(max_tries):
-        xs, IFs = _generate_component_signals(rng, n_components, t)
+        xs, IFs, signal_types = _generate_component_signals(
+            rng, n_components, t, signal_scenario
+        )
         if params_valid(IFs, fmin=0.0, fmax=fmax):
-            return xs, IFs
+            return xs, IFs, signal_types
         logger.debug(
             f"Attempt {attempt + 1} failed. IFs: "
             f"{[f'[{IF.min():.2f}, {IF.max():.2f}]' for IF in IFs]}"
@@ -222,7 +306,9 @@ def generate_sample(
     config: SyntheticDataConfig,
     n_components: int,
     snr_db: float,
-    tf_sigma: Optional[float] = None
+    tf_sigma: Optional[float] = None,
+    signal_scenario: Optional[str] = None,
+    freq_range: Optional[Tuple[float, float]] = None
 ) -> Sample:
     """
     Generate a complete synthetic sample with all required data.
@@ -238,10 +324,14 @@ def generate_sample(
     Args:
         rng: NumPy random number generator.
         config: SyntheticDataConfig object with all configuration parameters.
-        n_components: Number of signal components (1-4).
+        n_components: Number of signal components (1-8).
         snr_db: Signal-to-noise ratio in dB.
         tf_sigma: Gaussian blur sigma for TF representation. If None, uses
             a random value from config.tf_sigma_range. Default None.
+        signal_scenario: Optional signal scenario name. If provided, generates
+            only that signal type. Default None.
+        freq_range: Optional frequency range tuple (fmin, fmax). If provided,
+            uses range-specific n_freq_bins, nfft, and fmax. Default None.
     
     Returns:
         Sample: Complete sample object with all required data.
@@ -251,15 +341,25 @@ def generate_sample(
         ValueError: If any parameter is invalid.
     """
     t = np.arange(config.n_samples) / config.fs
-    xs, IFs = draw_valid_params_for_components(
-        rng, n_components, t, config.fmax
+    
+    if freq_range:
+        fmax = freq_range[1]
+        n_freq_bins = config.get_n_freq_bins_for_range(fmax)
+        nfft = config.get_nfft_for_range(fmax)
+    else:
+        fmax = config.fmax
+        n_freq_bins = config.n_freq_bins
+        nfft = config.nfft
+    
+    xs, IFs, signal_types_list = draw_valid_params_for_components(
+        rng, n_components, t, fmax, signal_scenario=signal_scenario
     )
     x_clean = np.sum(np.stack(xs, axis=0), axis=0)
     x_noisy = awgn(x_clean, snr_db=snr_db, rng=rng)
     S = stft_mag_128x8000(
         x_noisy,
         config.n_samples,
-        nfft=config.nfft,
+        nfft=nfft,
         win_len=config.win_len,
         hop=config.hop
     )
@@ -272,12 +372,12 @@ def generate_sample(
     
     tf_ideal = ifs_to_ideal_tf(
         IFs,
-        n_freq_bins=config.n_freq_bins,
+        n_freq_bins=n_freq_bins,
         n_time_bins=config.n_time_bins,
-        fmax=config.fmax,
+        fmax=fmax,
         sigma_bins=tf_sigma
     )
-    ifs_norm = (np.stack(IFs, axis=0) / config.fmax).astype(np.float32)
+    ifs_norm = (np.stack(IFs, axis=0) / fmax).astype(np.float32)
     binary_mask = generate_binary_mask(tf_ideal)
     
     return Sample(
@@ -288,5 +388,6 @@ def generate_sample(
         ifs_hz=IFs,
         ifs_norm=ifs_norm,
         tf_ideal=tf_ideal,
-        binary_mask=binary_mask
+        binary_mask=binary_mask,
+        signal_types=signal_types_list
     )

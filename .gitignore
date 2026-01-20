@@ -50,4 +50,5 @@ models/
 checkpoints/
 logs/
 results/
+data/
 

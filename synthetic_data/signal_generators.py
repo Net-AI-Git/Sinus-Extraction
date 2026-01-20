@@ -16,7 +16,16 @@ frequency trajectories. All functions return both the signal and its IF.
 from typing import Tuple, List
 import numpy as np
 
-from .signal_models import PolyPhaseParams, CosChirpParams, StepSineParams
+from .signal_models import (
+    PolyPhaseParams,
+    CosChirpParams,
+    StepSineParams,
+    FreqJumpParams,
+    SawtoothModParams,
+    SquareModParams,
+    PhaseJumpParams,
+    AmplitudeModParams
+)
 
 
 def poly_signal_and_if(
@@ -181,4 +190,197 @@ def step_sine_signal_and_if(
         x[start:] = amplitude * np.sin(phase)
         IF[start:] = freq
     
+    return x, IF
+
+
+def freq_jump_signal_and_if(
+    t: np.ndarray,
+    params: FreqJumpParams,
+    amplitude: float = 5000.0
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate frequency jump signal and its instantaneous frequency.
+    
+    Why: Frequency jump signals create sharp "dancing" patterns in
+    time-frequency representations. This function implements signals with
+    sudden frequency changes that create visually striking patterns.
+    
+    What: Generates a signal with piecewise constant frequencies that
+    jump instantly at specified times. The phase is continuous (integrated
+    from IF), and the IF jumps between frequencies at jump_times.
+    
+    Args:
+        t: Time vector in seconds. Must be 1D numpy array.
+        params: FreqJumpParams object containing jump times and frequencies.
+        amplitude: Signal amplitude. Default 5000.0.
+    
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: A tuple containing:
+            - Signal array x(t), same shape as t.
+            - Instantaneous frequency array IF(t) in Hz, same shape as t.
+    """
+    x = np.zeros_like(t)
+    IF = np.zeros_like(t)
+    start = 0
+    
+    for i in range(params.n_jumps):
+        end = np.searchsorted(t, params.jump_times[i])
+        freq = params.freqs[i]
+        IF[start:end] = freq
+        phase = 2 * np.pi * freq * (t[start:end] - t[start])
+        if start > 0:
+            phase += 2 * np.pi * params.freqs[i-1] * (t[start] - t[0])
+        x[start:end] = amplitude * np.sin(phase)
+        start = end
+    
+    if start < len(t):
+        freq = params.freqs[-1]
+        IF[start:] = freq
+        phase = 2 * np.pi * freq * (t[start:] - t[start])
+        if start > 0:
+            phase += 2 * np.pi * params.freqs[-2] * (t[start] - t[0])
+        x[start:] = amplitude * np.sin(phase)
+    
+    return x, IF
+
+
+def sawtooth_mod_signal_and_if(
+    t: np.ndarray,
+    params: SawtoothModParams,
+    amplitude: float = 5000.0
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate sawtooth modulation signal and its instantaneous frequency.
+    
+    Why: Sawtooth modulation creates linearly varying frequency patterns
+    that create sharp "dancing" visual effects in time-frequency representations.
+    
+    What: Generates a signal with sawtooth frequency modulation. The IF
+    varies linearly in a sawtooth pattern, and the phase is integrated
+    from the IF to ensure continuity.
+    
+    Args:
+        t: Time vector in seconds. Must be 1D numpy array.
+        params: SawtoothModParams object containing modulation parameters.
+        amplitude: Signal amplitude. Default 5000.0.
+    
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: A tuple containing:
+            - Signal array x(t), same shape as t.
+            - Instantaneous frequency array IF(t) in Hz, same shape as t.
+    """
+    sawtooth = 2 * (t * params.mod_freq - np.floor(t * params.mod_freq + 0.5))
+    IF = params.base_freq + params.mod_depth * params.base_freq * sawtooth
+    dt = t[1] - t[0] if len(t) > 1 else 0.0
+    phase = 2 * np.pi * np.cumsum(IF) * dt
+    if len(t) > 1:
+        phase = np.concatenate([[0.0], phase[:-1]])
+    x = amplitude * np.sin(phase)
+    return x, IF
+
+
+def square_mod_signal_and_if(
+    t: np.ndarray,
+    params: SquareModParams,
+    amplitude: float = 5000.0
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate square wave modulation signal and its instantaneous frequency.
+    
+    Why: Square wave modulation creates abrupt frequency changes that
+    create sharp "dancing" patterns in time-frequency representations.
+    
+    What: Generates a signal with square wave frequency modulation. The IF
+    switches between two values based on a square wave pattern, and the
+    phase is integrated from the IF to ensure continuity.
+    
+    Args:
+        t: Time vector in seconds. Must be 1D numpy array.
+        params: SquareModParams object containing modulation parameters.
+        amplitude: Signal amplitude. Default 5000.0.
+    
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: A tuple containing:
+            - Signal array x(t), same shape as t.
+            - Instantaneous frequency array IF(t) in Hz, same shape as t.
+    """
+    period = 1.0 / params.mod_freq
+    phase_mod = (t % period) / period
+    square = np.where(phase_mod < params.duty_cycle, 1.0, -1.0)
+    IF = params.base_freq + params.mod_depth * params.base_freq * square
+    dt = t[1] - t[0] if len(t) > 1 else 0.0
+    phase = 2 * np.pi * np.cumsum(IF) * dt
+    if len(t) > 1:
+        phase = np.concatenate([[0.0], phase[:-1]])
+    x = amplitude * np.sin(phase)
+    return x, IF
+
+
+def phase_jump_signal_and_if(
+    t: np.ndarray,
+    params: PhaseJumpParams,
+    amplitude: float = 5000.0
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate phase jump signal and its instantaneous frequency.
+    
+    Why: Phase jump signals create sudden phase discontinuities that
+    create sharp transitions in time-frequency representations, creating
+    "dancing" visual effects.
+    
+    What: Generates a signal with constant frequency but sudden phase
+    jumps at specified times. The IF remains constant, but the phase
+    accumulates jumps.
+    
+    Args:
+        t: Time vector in seconds. Must be 1D numpy array.
+        params: PhaseJumpParams object containing jump parameters.
+        amplitude: Signal amplitude. Default 5000.0.
+    
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: A tuple containing:
+            - Signal array x(t), same shape as t.
+            - Instantaneous frequency array IF(t) in Hz, same shape as t.
+    """
+    IF = np.full_like(t, params.base_freq)
+    phase = 2 * np.pi * params.base_freq * t
+    
+    for i, jump_time in enumerate(params.jump_times):
+        idx = np.searchsorted(t, jump_time)
+        if idx < len(t):
+            phase[idx:] += params.jump_sizes[i]
+    
+    x = amplitude * np.sin(phase)
+    return x, IF
+
+
+def amplitude_mod_signal_and_if(
+    t: np.ndarray,
+    params: AmplitudeModParams,
+    base_amplitude: float = 5000.0
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate amplitude modulation signal and its instantaneous frequency.
+    
+    Why: Amplitude modulation creates time-varying amplitude patterns that
+    create dynamic "dancing" visual effects in time-frequency representations.
+    
+    What: Generates a signal with amplitude modulation. The amplitude
+    varies sinusoidally, while the frequency remains constant. The IF
+    is constant at base_freq.
+    
+    Args:
+        t: Time vector in seconds. Must be 1D numpy array.
+        params: AmplitudeModParams object containing modulation parameters.
+        base_amplitude: Base signal amplitude. Default 5000.0.
+    
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: A tuple containing:
+            - Signal array x(t), same shape as t.
+            - Instantaneous frequency array IF(t) in Hz, same shape as t.
+    """
+    amplitude = base_amplitude * (1.0 + params.mod_depth * np.cos(2 * np.pi * params.mod_freq * t))
+    phase = 2 * np.pi * params.base_freq * t
+    x = amplitude * np.sin(phase)
+    IF = np.full_like(t, params.base_freq)
     return x, IF

@@ -248,7 +248,7 @@ def generate_and_display_pairs(
 def generate_and_display_pairs_convenience(
     n_pairs: int = 5,
     config: Optional[SyntheticDataConfig] = None,
-    seed: int = 42
+    seed: Optional[int] = None
 ) -> List[Sample]:
     """
     Generate and display sample pairs (convenience function).
@@ -264,7 +264,8 @@ def generate_and_display_pairs_convenience(
     Args:
         n_pairs: Number of sample pairs to generate and display. Default 5.
         config: SyntheticDataConfig object. If None, creates default config.
-        seed: Random seed for reproducibility. Default 42.
+        seed: Random seed for reproducibility. If None, uses config.seed.
+            Default None.
     
     Returns:
         List[Sample]: List of generated Sample objects.
@@ -275,7 +276,8 @@ def generate_and_display_pairs_convenience(
     if config is None:
         config = SyntheticDataConfig()
     
-    rng = np.random.default_rng(seed)
+    seed_value = seed if seed is not None else config.seed
+    rng = np.random.default_rng(seed_value)
     samples = []
     
     for _ in range(n_pairs):

@@ -117,6 +117,28 @@ class SyntheticDataConfig(BaseSettings):
         description="Random seed for reproducibility"
     )
     
+    # Frequency Range Configuration
+    freq_ranges: List[Tuple[float, float]] = Field(
+        default=[(0, 500), (0, 1000), (0, 1500), (0, 2000)],
+        description="List of frequency ranges (fmin, fmax) for hierarchical organization"
+    )
+    
+    # Signal Scenario Configuration
+    signal_scenarios: List[str] = Field(
+        default=[
+            'poly_phase',
+            'cos_chirp',
+            'step_sine',
+            'freq_jump',
+            'sawtooth_mod',
+            'square_mod',
+            'phase_jump',
+            'amplitude_mod',
+            'mixed'
+        ],
+        description="List of signal scenario names for hierarchical organization"
+    )
+    
     @field_validator('fs')
     @classmethod
     def validate_fs(cls, v: float) -> float:
@@ -229,6 +251,64 @@ class SyntheticDataConfig(BaseSettings):
             float: Maximum frequency (Nyquist frequency) in Hz.
         """
         return self.fs / 2.0
+    
+    def get_freq_range_dir_name(self, fmin: float, fmax: float) -> str:
+        """
+        Generate directory name for frequency range.
+        
+        Why: Provides a consistent naming convention for frequency range
+        directories in the hierarchical structure. This ensures all frequency
+        ranges are named uniformly.
+        
+        What: Formats the frequency range as "freq_{int(fmin)}_{int(fmax)}"
+        to create a directory name.
+        
+        Args:
+            fmin: Minimum frequency in Hz.
+            fmax: Maximum frequency in Hz.
+        
+        Returns:
+            str: Directory name for the frequency range.
+        """
+        return f"freq_{int(fmin)}_{int(fmax)}"
+    
+    def get_n_freq_bins_for_range(self, fmax: float) -> int:
+        """
+        Get number of frequency bins for a given frequency range.
+        
+        Why: Ensures uniform frequency resolution (1 Hz/bin) across all
+        frequency ranges. This allows consistent image dimensions within
+        each frequency range while maintaining uniform resolution.
+        
+        What: Returns the number of frequency bins equal to fmax, ensuring
+        1 Hz/bin resolution. For example, 500 Hz range → 500 bins.
+        
+        Args:
+            fmax: Maximum frequency in Hz.
+        
+        Returns:
+            int: Number of frequency bins for the range.
+        """
+        return int(fmax)
+    
+    def get_nfft_for_range(self, fmax: float) -> int:
+        """
+        Get FFT size for a given frequency range.
+        
+        Why: Computes the appropriate FFT size for STFT computation based
+        on the frequency range. This ensures proper frequency resolution
+        while maintaining Nyquist requirements.
+        
+        What: Returns 2 * get_n_freq_bins_for_range(fmax) to satisfy
+        Nyquist requirements. For example, 500 Hz range → 1000 nfft.
+        
+        Args:
+            fmax: Maximum frequency in Hz.
+        
+        Returns:
+            int: FFT size for the frequency range.
+        """
+        return 2 * self.get_n_freq_bins_for_range(fmax)
     
     class Config:
         """Pydantic configuration."""
