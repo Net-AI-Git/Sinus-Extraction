@@ -18,11 +18,17 @@ import os
 import sys
 import json
 import uuid
+import warnings
 from typing import Optional, Tuple, List, Dict, Any
 import numpy as np
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
+
+# Suppress RuntimeWarning about module import in multiprocessing
+# This warning occurs when ProcessPoolExecutor imports modules in worker processes
+# It's harmless but noisy, so we suppress it globally
+warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
 
 # Handle both direct execution and package import
 if __name__ == "__main__":
@@ -43,6 +49,24 @@ else:
 
 logger = setup_logger('synthetic_data')
 log_path = r"c:\Users\NETANIT\Desktop\work\Sinus-Extraction\.cursor\debug.log"
+
+def _debug_log(location: str, message: str, data: Dict[str, Any], hypothesis_id: str = "A") -> None:
+    """Helper function to write debug logs in NDJSON format."""
+    try:
+        import time
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000)
+        }
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass  # Silently fail if logging doesn't work
 
 
 def _setup_hierarchical_directories(
@@ -227,17 +251,18 @@ def generate_all_scenarios(
 
 def _generate_and_save_single_sample(
     task_params: Dict[str, Any]
-) -> Tuple[str, str, int]:
+) -> Tuple[str, str, int, str]:
     """
     Generate and save a single sample (for parallel processing).
     
     Why: This function is designed to be picklable for ProcessPoolExecutor.
     It receives all necessary parameters as a dictionary and creates a new
-    RNG instance to avoid pickling issues.
+    RNG instance to avoid pickling issues. Enhanced error handling provides
+    detailed error information for debugging.
     
     What: Creates a new RNG from the provided seed, generates a sample with
     the specified parameters, saves both STFT and mask images, and returns
-    status information.
+    status information with error type for better error tracking.
     
     Args:
         task_params: Dictionary containing all parameters needed for sample
@@ -246,7 +271,8 @@ def _generate_and_save_single_sample(
             total_samples, combination_info.
     
     Returns:
-        Tuple[str, str, int]: (status, message, sample_index)
+        Tuple[str, str, int, str]: (status, message, sample_index, error_type)
+            where error_type is empty string if success, or exception type name if error.
     """
     # Import here to avoid pickling issues
     import os
@@ -300,13 +326,16 @@ def _generate_and_save_single_sample(
             'success',
             f"Sample {task_params['sample_index']}/{task_params['total_samples']}: "
             f"{task_params['combination_info']} - {base_name}",
-            task_params['sample_index']
+            task_params['sample_index'],
+            ''
         )
     except Exception as e:
+        error_type = type(e).__name__
         return (
             'error',
             f"Error generating sample {task_params['sample_index']}: {str(e)}",
-            task_params['sample_index']
+            task_params['sample_index'],
+            error_type
         )
 
 
@@ -436,7 +465,7 @@ def generate_diverse_samples(
         
         # Process completed tasks as they finish
         for future in as_completed(futures):
-            status, message, sample_idx = future.result()
+            status, message, sample_idx, error_type = future.result()
             completed_count += 1
             
             if status == 'success':
@@ -458,34 +487,687 @@ def generate_diverse_samples(
     )
 
 
+def _generate_multiple_samples_for_directory(
+    task_params: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Generate multiple samples for a single directory (for parallel processing).
+    
+    Why: This function is designed to be picklable for ProcessPoolExecutor.
+    It generates a fixed number of samples for a single (freq_range, scenario)
+    combination, ensuring balanced dataset generation. Each directory gets
+    exactly the same number of samples.
+    
+    What: Creates a new RNG from base seed, generates exactly samples_count
+    samples with deterministic seeds (base_seed + i), saves all samples to
+    the appropriate directory, and returns statistics about success/errors.
+    
+    Args:
+        task_params: Dictionary containing: freq_range, scenario, samples_count,
+            config_dict, base_seed, images_dir, masks_dir, combination_info.
+    
+    Returns:
+        Dict[str, Any]: Statistics dictionary with keys: success_count, error_count,
+            errors (list of error messages), combination_info, directory_path.
+    """
+    # Import here to avoid pickling issues and RuntimeWarning
+    import os
+    import uuid
+    import numpy as np
+    import json
+    import time
+    import warnings
+    # Suppress RuntimeWarning about module import in multiprocessing
+    warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
+    from synthetic_data.config import SyntheticDataConfig
+    from synthetic_data.sample_generator import generate_sample
+    from synthetic_data.visualization import save_image
+    
+    # #region agent log
+    try:
+        log_path_local = r"c:\Users\NETANIT\Desktop\work\Sinus-Extraction\.cursor\debug.log"
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "A",
+            "location": "main.py:_generate_multiple_samples_for_directory:ENTRY",
+            "message": "Function entry",
+            "data": {
+                "scenario": task_params.get('scenario', 'unknown'),
+                "samples_count": task_params.get('samples_count', 0),
+                "base_seed": task_params.get('base_seed', 0),
+                "images_dir": task_params.get('images_dir', 'unknown')
+            },
+            "timestamp": int(time.time() * 1000)
+        }
+        with open(log_path_local, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    
+    freq_range = task_params['freq_range']
+    scenario = task_params['scenario']
+    samples_count = task_params['samples_count']
+    config_dict = task_params['config_dict']
+    base_seed = task_params['base_seed']
+    images_dir = task_params['images_dir']
+    masks_dir = task_params['masks_dir']
+    combination_info = task_params['combination_info']
+    
+    # Reconstruct config from dict
+    config = SyntheticDataConfig(**config_dict)
+    
+    success_count = 0
+    error_count = 0
+    errors = []
+    
+    # #region agent log
+    try:
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "B",
+            "location": "main.py:_generate_multiple_samples_for_directory:BEFORE_LOOP",
+            "message": "Before sample generation loop",
+            "data": {
+                "samples_count": samples_count,
+                "config_loaded": True
+            },
+            "timestamp": int(time.time() * 1000)
+        }
+        with open(log_path_local, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    
+    # Generate exactly samples_count samples
+    for i in range(samples_count):
+        # Create deterministic seed for this sample
+        sample_seed = base_seed + i
+        rng = np.random.default_rng(sample_seed)
+        
+        # Random parameters for this sample
+        n_components = rng.choice([1, 2, 3])
+        snr_db = rng.choice(config.snr_list)
+        tf_sigma = rng.uniform(
+            config.tf_sigma_range[0],
+            config.tf_sigma_range[1]
+        )
+        
+        # #region agent log
+        try:
+            log_entry = {
+                "sessionId": "debug-session",
+                "runId": "run1",
+                "hypothesisId": "N",
+                "location": "main.py:_generate_multiple_samples_for_directory:BEFORE_GENERATE",
+                "message": "Before generate_sample call",
+                "data": {
+                    "sample_index": i + 1,
+                    "total_samples": samples_count,
+                    "sample_seed": sample_seed,
+                    "n_components": int(n_components),
+                    "snr_db": float(snr_db),
+                    "tf_sigma": float(tf_sigma),
+                    "scenario": scenario,
+                    "freq_range": freq_range,
+                    "fmax": freq_range[1] if freq_range else None
+                },
+                "timestamp": int(time.time() * 1000)
+            }
+            with open(log_path_local, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception:
+            pass
+        # #endregion
+        
+        try:
+            # Generate sample
+            sample = generate_sample(
+                rng,
+                config,
+                int(n_components),
+                float(snr_db),
+                float(tf_sigma),
+                signal_scenario=scenario,
+                freq_range=freq_range
+            )
+            
+            # Generate unique ID and save
+            unique_id = str(uuid.uuid4())
+            base_name = f'sample_{unique_id}.jpg'
+            image_filename = os.path.join(images_dir, base_name)
+            mask_filename = os.path.join(masks_dir, base_name)
+            
+            save_image(
+                sample.stft,
+                image_filename,
+                config,
+                cmap='viridis',
+                save_raw=True
+            )
+            save_image(
+                sample.binary_mask,
+                mask_filename,
+                config,
+                cmap='gray',
+                title='Binary Mask',
+                save_raw=True
+            )
+            
+            success_count += 1
+            
+            # #region agent log
+            try:
+                log_entry = {
+                    "sessionId": "debug-session",
+                    "runId": "run1",
+                    "hypothesisId": "C",
+                    "location": "main.py:_generate_multiple_samples_for_directory:SAMPLE_SUCCESS",
+                    "message": "Sample generated successfully",
+                    "data": {
+                        "sample_index": i + 1,
+                        "total_samples": samples_count,
+                        "success_count": success_count,
+                        "base_name": base_name
+                    },
+                    "timestamp": int(time.time() * 1000)
+                }
+                with open(log_path_local, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps(log_entry) + "\n")
+            except Exception:
+                pass
+            # #endregion
+        except Exception as e:
+            error_type = type(e).__name__
+            error_count += 1
+            error_msg = f"Sample {i+1}/{samples_count} failed: {str(e)} ({error_type})"
+            errors.append(error_msg)
+            
+            # #region agent log
+            try:
+                log_entry = {
+                    "sessionId": "debug-session",
+                    "runId": "run1",
+                    "hypothesisId": "D",
+                    "location": "main.py:_generate_multiple_samples_for_directory:SAMPLE_ERROR",
+                    "message": "Sample generation failed",
+                    "data": {
+                        "sample_index": i + 1,
+                        "total_samples": samples_count,
+                        "error_type": error_type,
+                        "error_message": str(e),
+                        "error_count": error_count,
+                        "sample_seed": sample_seed,
+                        "n_components": int(n_components),
+                        "snr_db": float(snr_db),
+                        "scenario": scenario,
+                        "freq_range": freq_range
+                    },
+                    "timestamp": int(time.time() * 1000)
+                }
+                with open(log_path_local, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps(log_entry) + "\n")
+            except Exception:
+                pass
+            # #endregion
+    
+    result = {
+        'success_count': success_count,
+        'error_count': error_count,
+        'errors': errors,
+        'combination_info': combination_info,
+        'directory_path': images_dir
+    }
+    
+    # #region agent log
+    try:
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "E",
+            "location": "main.py:_generate_multiple_samples_for_directory:EXIT",
+            "message": "Function exit",
+            "data": {
+                "success_count": success_count,
+                "error_count": error_count,
+                "total_samples": samples_count,
+                "combination_info": combination_info
+            },
+            "timestamp": int(time.time() * 1000)
+        }
+        with open(log_path_local, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    
+    return result
+
+
+def generate_balanced_dataset(
+    samples_per_directory: int = 5,
+    config: Optional[SyntheticDataConfig] = None,
+    base_output_dir: Optional[str] = None,
+    max_workers: Optional[int] = None
+) -> Dict[str, Any]:
+    """
+    Generate balanced dataset with equal number of samples per directory.
+    
+    Why: Ensures every (freq_range, scenario) combination has exactly the same
+    number of samples, creating a balanced dataset for training. Uses parallel
+    processing to speed up generation significantly.
+    
+    What: Creates tasks for each (freq_range, scenario) combination, where each
+    task generates exactly samples_per_directory samples. Executes all tasks
+    in parallel using ProcessPoolExecutor. Skips errors and continues. Reports
+    progress every 100 completed samples. Returns statistics at the end.
+    
+    Args:
+        samples_per_directory: Number of samples to generate per directory.
+            Default 5. Easy to change for different dataset sizes.
+        config: SyntheticDataConfig object. If None, creates default config.
+        base_output_dir: Base output directory. If None, uses config.output_dir.
+        max_workers: Maximum number of parallel workers. If None, uses
+            os.cpu_count(). Default None.
+    
+    Returns:
+        Dict[str, Any]: Statistics dictionary with keys: total_directories,
+            total_samples_expected, total_samples_success, total_samples_errors,
+            directories_completed, directories_with_errors, errors_summary.
+    
+    Raises:
+        OSError: If output directories cannot be created.
+    """
+    if config is None:
+        config = SyntheticDataConfig()
+    
+    if base_output_dir is None:
+        base_output_dir = config.output_dir
+    
+    if max_workers is None:
+        max_workers = os.cpu_count() or 4
+    
+    # Exclude 'mixed' scenario
+    scenarios = [s for s in config.signal_scenarios if s != 'mixed']
+    
+    total_combinations = len(config.freq_ranges) * len(scenarios)
+    total_samples_expected = total_combinations * samples_per_directory
+    
+    # #region agent log
+    try:
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "G",
+            "location": "main.py:generate_balanced_dataset:CONFIG_CALC",
+            "message": "Configuration calculated",
+            "data": {
+                "total_combinations": total_combinations,
+                "total_samples_expected": total_samples_expected,
+                "num_freq_ranges": len(config.freq_ranges),
+                "num_scenarios": len(scenarios),
+                "max_workers": max_workers
+            },
+            "timestamp": int(__import__('time').time() * 1000)
+        }
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    
+    logger.info(
+        f"Generating balanced dataset: {samples_per_directory} samples per directory"
+    )
+    logger.info(
+        f"Total: {total_combinations} directories × {samples_per_directory} samples = "
+        f"{total_samples_expected} samples"
+    )
+    logger.info(f"Output directory: {base_output_dir}")
+    logger.info(f"Using {max_workers} parallel workers")
+    
+    # Prepare all tasks
+    tasks = []
+    rng = np.random.default_rng(config.seed)
+    task_index = 0
+    
+    # Convert config to dict for pickling
+    if hasattr(config, 'model_dump'):
+        config_dict = config.model_dump()
+    else:
+        config_dict = config.dict()
+    
+    # #region agent log
+    try:
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "H",
+            "location": "main.py:generate_balanced_dataset:BEFORE_TASK_CREATION",
+            "message": "Before task creation loop",
+            "data": {
+                "config_dict_keys": list(config_dict.keys())[:5] if config_dict else []
+            },
+            "timestamp": int(__import__('time').time() * 1000)
+        }
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    
+    # Create task for each (freq_range, scenario) combination
+    for freq_range in config.freq_ranges:
+        for scenario in scenarios:
+            # Setup hierarchical directories
+            images_dir, masks_dir = _setup_hierarchical_directories(
+                base_output_dir,
+                freq_range,
+                scenario
+            )
+            
+            combination_info = f"{scenario} in {freq_range}"
+            
+            # Generate base seed for this task (deterministic)
+            task_seed = rng.integers(0, 2**31)
+            
+            task_params = {
+                'freq_range': freq_range,
+                'scenario': scenario,
+                'samples_count': samples_per_directory,
+                'config_dict': config_dict,
+                'base_seed': task_seed,
+                'images_dir': images_dir,
+                'masks_dir': masks_dir,
+                'combination_info': combination_info
+            }
+            
+            tasks.append(task_params)
+            task_index += 1
+    
+    # Execute tasks in parallel
+    completed_count = 0
+    total_success = 0
+    total_errors = 0
+    directories_completed = 0
+    directories_with_errors = 0
+    all_errors = []
+    last_reported_samples = 0
+    
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        futures = {
+            executor.submit(_generate_multiple_samples_for_directory, task): task
+            for task in tasks
+        }
+        
+        # Process completed tasks as they finish
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                completed_count += 1
+                directories_completed += 1
+                
+                # #region agent log
+                try:
+                    log_entry = {
+                        "sessionId": "debug-session",
+                        "runId": "run1",
+                        "hypothesisId": "K",
+                        "location": "main.py:generate_balanced_dataset:TASK_COMPLETED",
+                        "message": "Task completed",
+                        "data": {
+                            "completed_count": completed_count,
+                            "total_combinations": total_combinations,
+                            "success_count": result['success_count'],
+                            "error_count": result['error_count'],
+                            "combination_info": result['combination_info']
+                        },
+                        "timestamp": int(__import__('time').time() * 1000)
+                    }
+                    with open(log_path, 'a', encoding='utf-8') as f:
+                        f.write(json.dumps(log_entry) + "\n")
+                except Exception:
+                    pass
+                # #endregion
+                
+                total_success += result['success_count']
+                total_errors += result['error_count']
+                
+                if result['error_count'] > 0:
+                    directories_with_errors += 1
+                    all_errors.extend(result['errors'])
+                    logger.warning(
+                        f"Directory {result['combination_info']}: "
+                        f"{result['success_count']} success, {result['error_count']} errors"
+                    )
+                else:
+                    logger.info(
+                        f"Directory {result['combination_info']}: "
+                        f"{result['success_count']} samples generated successfully"
+                    )
+                
+                # Progress update every 100 samples
+                if (total_success - last_reported_samples >= 100 or 
+                    completed_count == total_combinations):
+                    progress_pct = 100.0 * completed_count / total_combinations
+                    samples_pct = 100.0 * total_success / total_samples_expected
+                    logger.info(
+                        f"Progress: {completed_count}/{total_combinations} directories "
+                        f"({progress_pct:.1f}%), {total_success}/{total_samples_expected} samples "
+                        f"({samples_pct:.1f}%), {total_errors} errors"
+                    )
+                    last_reported_samples = total_success
+            except Exception as e:
+                completed_count += 1
+                directories_with_errors += 1
+                error_type = type(e).__name__
+                error_msg = f"Task execution failed: {str(e)} ({error_type})"
+                all_errors.append(error_msg)
+                logger.error(error_msg)
+                # #region agent log
+                try:
+                    log_entry = {
+                        "sessionId": "debug-session",
+                        "runId": "run1",
+                        "hypothesisId": "L",
+                        "location": "main.py:generate_balanced_dataset:TASK_ERROR",
+                        "message": "Task execution error",
+                        "data": {
+                            "error_type": error_type,
+                            "error_message": str(e),
+                            "completed_count": completed_count
+                        },
+                        "timestamp": int(__import__('time').time() * 1000)
+                    }
+                    with open(log_path, 'a', encoding='utf-8') as f:
+                        f.write(json.dumps(log_entry) + "\n")
+                except Exception:
+                    pass
+                # #endregion
+    
+    # Final statistics
+    stats = {
+        'total_directories': total_combinations,
+        'total_samples_expected': total_samples_expected,
+        'total_samples_success': total_success,
+        'total_samples_errors': total_errors,
+        'directories_completed': directories_completed,
+        'directories_with_errors': directories_with_errors,
+        'errors_summary': all_errors[:10] if len(all_errors) > 10 else all_errors
+    }
+    
+    # #region agent log
+    try:
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "M",
+            "location": "main.py:generate_balanced_dataset:EXIT",
+            "message": "Function exit with statistics",
+            "data": stats,
+            "timestamp": int(__import__('time').time() * 1000)
+        }
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    
+    logger.info(f"Generation complete!")
+    logger.info(f"Directories: {directories_completed}/{total_combinations} completed")
+    logger.info(f"Samples: {total_success}/{total_samples_expected} generated successfully")
+    if total_errors > 0:
+        logger.warning(f"Errors: {total_errors} samples failed")
+    
+    return stats
+
+
+def verify_dataset_balance(
+    base_output_dir: str,
+    expected_samples_per_dir: int,
+    config: Optional[SyntheticDataConfig] = None
+) -> Dict[str, Any]:
+    """
+    Verify dataset balance by counting images in each directory.
+    
+    Why: Ensures the dataset is balanced by checking that every directory
+    contains exactly the expected number of samples. This validation step
+    catches any generation issues or missing files.
+    
+    What: Scans all directories in the hierarchical structure (freq_X_Y/scenario/images),
+    counts images in each directory, identifies directories with incorrect counts,
+    and returns a detailed report with statistics.
+    
+    Args:
+        base_output_dir: Base output directory to scan.
+        expected_samples_per_dir: Expected number of images per directory.
+        config: SyntheticDataConfig object. If None, creates default config.
+    
+    Returns:
+        Dict[str, Any]: Verification report with keys: total_directories,
+            balanced_directories, unbalanced_directories, missing_directories,
+            directory_counts (dict mapping dir_path to count), summary.
+    """
+    if config is None:
+        config = SyntheticDataConfig()
+    
+    # Exclude 'mixed' scenario
+    scenarios = [s for s in config.signal_scenarios if s != 'mixed']
+    
+    directory_counts = {}
+    balanced_directories = []
+    unbalanced_directories = []
+    missing_directories = []
+    
+    # Scan all directories
+    for freq_range in config.freq_ranges:
+        freq_dir_name = config.get_freq_range_dir_name(freq_range[0], freq_range[1])
+        
+        for scenario in scenarios:
+            images_dir = os.path.join(
+                base_output_dir,
+                freq_dir_name,
+                scenario,
+                'images'
+            )
+            
+            if not os.path.exists(images_dir):
+                missing_directories.append(images_dir)
+                continue
+            
+            # Count image files
+            image_files = [
+                f for f in os.listdir(images_dir)
+                if f.endswith('.jpg') or f.endswith('.png')
+            ]
+            count = len(image_files)
+            directory_counts[images_dir] = count
+            
+            if count == expected_samples_per_dir:
+                balanced_directories.append(images_dir)
+            else:
+                unbalanced_directories.append({
+                    'directory': images_dir,
+                    'expected': expected_samples_per_dir,
+                    'actual': count
+                })
+    
+    total_directories = len(config.freq_ranges) * len(scenarios)
+    
+    summary = {
+        'total_directories': total_directories,
+        'balanced_directories': len(balanced_directories),
+        'unbalanced_directories': len(unbalanced_directories),
+        'missing_directories': len(missing_directories),
+        'expected_samples_per_dir': expected_samples_per_dir
+    }
+    
+    logger.info("Dataset verification complete:")
+    logger.info(f"Total directories: {total_directories}")
+    logger.info(f"Balanced: {len(balanced_directories)}")
+    logger.info(f"Unbalanced: {len(unbalanced_directories)}")
+    logger.info(f"Missing: {len(missing_directories)}")
+    
+    if unbalanced_directories:
+        logger.warning("Unbalanced directories:")
+        for item in unbalanced_directories[:5]:  # Show first 5
+            logger.warning(
+                f"  {item['directory']}: expected {item['expected']}, "
+                f"found {item['actual']}"
+            )
+    
+    if missing_directories:
+        logger.warning("Missing directories:")
+        for dir_path in missing_directories[:5]:  # Show first 5
+            logger.warning(f"  {dir_path}")
+    
+    return {
+        'total_directories': total_directories,
+        'balanced_directories': balanced_directories,
+        'unbalanced_directories': unbalanced_directories,
+        'missing_directories': missing_directories,
+        'directory_counts': directory_counts,
+        'summary': summary
+    }
+
+
 def main() -> None:
     """
     Main entry point for synthetic data generation.
     
     Why: Provides a standard entry point for command-line execution.
-    This function loads configuration and executes systematic sample generation
+    This function loads configuration and executes balanced dataset generation
     across all frequency ranges and scenarios with hierarchical directory structure.
+    Ensures equal number of samples per directory for balanced training data.
     
     What: Creates a SyntheticDataConfig object (which can be overridden by
     environment variables), accepts command-line arguments for number of samples
-    per combination, and calls generate_diverse_samples() to create samples
-    systematically for all (freq_range, scenario) combinations. The order is
-    fixed, but signal parameters are randomized.
+    per directory, and calls generate_balanced_dataset() to create samples
+    systematically for all (freq_range, scenario) combinations. Verifies dataset
+    balance at the end. The order is fixed, but signal parameters are randomized.
     
     Raises:
         ConfigurationError: If configuration is invalid.
         SignalGenerationError: If sample generation fails.
     """
     import argparse
+    import warnings
+    # Suppress RuntimeWarning about module import in multiprocessing
+    # This warning occurs when ProcessPoolExecutor imports modules in worker processes
+    warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
     
     parser = argparse.ArgumentParser(
-        description='Generate synthetic data samples systematically across all frequency ranges and scenarios'
+        description='Generate balanced synthetic data dataset with equal samples per directory'
     )
     parser.add_argument(
-        '--n_samples',
+        '--samples_per_directory',
         type=int,
-        default=3,
-        help='Number of samples to generate per (freq_range, scenario) combination (default: 3)'
+        default=5,
+        help='Number of samples to generate per directory (default: 5)'
     )
     parser.add_argument(
         '--output_dir',
@@ -493,17 +1175,50 @@ def main() -> None:
         default=None,
         help='Base output directory (default: uses config.output_dir)'
     )
+    parser.add_argument(
+        '--max_workers',
+        type=int,
+        default=None,
+        help='Maximum number of parallel workers (default: auto - CPU count)'
+    )
     args = parser.parse_args()
     
     config = SyntheticDataConfig()
-    logger.info("Synthetic Data Generation")
+    logger.info("Synthetic Data Generation - Balanced Dataset")
     logger.info(f"Configuration: fs={config.fs}, duration={config.duration}")
+    logger.info(f"Samples per directory: {args.samples_per_directory}")
     
-    generate_diverse_samples(
-        n_samples=args.n_samples,
+    # Generate balanced dataset
+    stats = generate_balanced_dataset(
+        samples_per_directory=args.samples_per_directory,
         config=config,
-        base_output_dir=args.output_dir
+        base_output_dir=args.output_dir,
+        max_workers=args.max_workers
     )
+    
+    # Verify dataset balance
+    if args.output_dir is None:
+        output_dir = config.output_dir
+    else:
+        output_dir = args.output_dir
+    
+    logger.info("Verifying dataset balance...")
+    verification = verify_dataset_balance(
+        base_output_dir=output_dir,
+        expected_samples_per_dir=args.samples_per_directory,
+        config=config
+    )
+    
+    # Final summary
+    logger.info("=" * 60)
+    logger.info("FINAL SUMMARY")
+    logger.info("=" * 60)
+    logger.info(f"Generation: {stats['total_samples_success']}/{stats['total_samples_expected']} samples")
+    logger.info(f"Verification: {verification['summary']['balanced_directories']}/{verification['summary']['total_directories']} directories balanced")
+    if verification['summary']['unbalanced_directories'] > 0:
+        logger.warning(f"WARNING: {verification['summary']['unbalanced_directories']} directories are unbalanced!")
+    if verification['summary']['missing_directories'] > 0:
+        logger.warning(f"WARNING: {verification['summary']['missing_directories']} directories are missing!")
 
 
 if __name__ == "__main__":

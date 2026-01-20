@@ -166,7 +166,8 @@ def _generate_component_signals(
     rng: np.random.Generator,
     n_components: int,
     t: np.ndarray,
-    signal_scenario: Optional[str] = None
+    signal_scenario: Optional[str] = None,
+    fmax: Optional[float] = None
 ) -> Tuple[List[np.ndarray], List[np.ndarray], List[str]]:
     """
     Generate signals and IFs for each component type.
@@ -212,31 +213,39 @@ def _generate_component_signals(
             sig_type = _determine_signal_type(i, n_components)
         
         if sig_type == 'poly_phase':
-            p = gen_poly_params(rng)
+            p = gen_poly_params(rng, fmax=fmax)
             x, IF = poly_signal_and_if(t, p)
         elif sig_type == 'cos_chirp':
-            q = gen_coschirp_params(rng)
+            q = gen_coschirp_params(rng, fmax=fmax)
             x, IF = coschirp_signal_and_if(t, q)
         elif sig_type == 'step_sine':
-            step_params = gen_step_sine_params(rng)
+            step_params = gen_step_sine_params(rng, freq_max=fmax if fmax else 1000.0)
             x, IF = step_sine_signal_and_if(t, step_params)
         elif sig_type == 'freq_jump':
-            jump_params = gen_freq_jump_params(rng)
+            jump_params = gen_freq_jump_params(rng, freq_max=fmax if fmax else 2000.0)
             x, IF = freq_jump_signal_and_if(t, jump_params)
         elif sig_type == 'sawtooth_mod':
-            sawtooth_params = gen_sawtooth_mod_params(rng)
+            sawtooth_params = gen_sawtooth_mod_params(
+                rng, base_freq_range=(1.0, fmax if fmax else 2000.0)
+            )
             x, IF = sawtooth_mod_signal_and_if(t, sawtooth_params)
         elif sig_type == 'square_mod':
-            square_params = gen_square_mod_params(rng)
+            square_params = gen_square_mod_params(
+                rng, base_freq_range=(1.0, fmax if fmax else 2000.0)
+            )
             x, IF = square_mod_signal_and_if(t, square_params)
         elif sig_type == 'phase_jump':
-            phase_params = gen_phase_jump_params(rng)
+            phase_params = gen_phase_jump_params(
+                rng, base_freq_range=(1.0, fmax if fmax else 2000.0)
+            )
             x, IF = phase_jump_signal_and_if(t, phase_params)
         elif sig_type == 'amplitude_mod':
-            amp_params = gen_amplitude_mod_params(rng)
+            amp_params = gen_amplitude_mod_params(
+                rng, base_freq_range=(1.0, fmax if fmax else 2000.0)
+            )
             x, IF = amplitude_mod_signal_and_if(t, amp_params)
         else:
-            p = gen_poly_params(rng)
+            p = gen_poly_params(rng, fmax=fmax)
             x, IF = poly_signal_and_if(t, p)
             sig_type = 'poly_phase'
         
@@ -285,16 +294,125 @@ def draw_valid_params_for_components(
         SignalGenerationError: If valid parameters cannot be found within
             max_tries attempts.
     """
+    # #region agent log
+    import json
+    import time
+    log_path_local = r"c:\Users\NETANIT\Desktop\work\Sinus-Extraction\.cursor\debug.log"
+    try:
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "O",
+            "location": "sample_generator.py:draw_valid_params_for_components:ENTRY",
+            "message": "Function entry",
+            "data": {
+                "n_components": n_components,
+                "fmax": fmax,
+                "max_tries": max_tries,
+                "signal_scenario": signal_scenario,
+                "t_length": len(t),
+                "t_min": float(t.min()),
+                "t_max": float(t.max())
+            },
+            "timestamp": int(time.time() * 1000)
+        }
+        with open(log_path_local, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass
+    # #endregion
+    
     for attempt in range(max_tries):
         xs, IFs, signal_types = _generate_component_signals(
-            rng, n_components, t, signal_scenario
+            rng, n_components, t, signal_scenario, fmax=fmax
         )
+        
+        # #region agent log
+        try:
+            ifs_info = []
+            for idx, IF in enumerate(IFs):
+                ifs_info.append({
+                    "component": idx,
+                    "min": float(IF.min()),
+                    "max": float(IF.max()),
+                    "mean": float(IF.mean()),
+                    "has_nan": bool(np.any(np.isnan(IF))),
+                    "has_inf": bool(np.any(np.isinf(IF))),
+                    "below_zero": bool(np.any(IF < 0.0)),
+                    "above_fmax": bool(np.any(IF > fmax)),
+                    "signal_type": signal_types[idx] if idx < len(signal_types) else "unknown"
+                })
+            
+            log_entry = {
+                "sessionId": "debug-session",
+                "runId": "run1",
+                "hypothesisId": "P",
+                "location": "sample_generator.py:draw_valid_params_for_components:ATTEMPT",
+                "message": "Parameter generation attempt",
+                "data": {
+                    "attempt": attempt + 1,
+                    "max_tries": max_tries,
+                    "n_components": n_components,
+                    "fmax": fmax,
+                    "ifs_info": ifs_info,
+                    "is_valid": params_valid(IFs, fmin=0.0, fmax=fmax)
+                },
+                "timestamp": int(time.time() * 1000)
+            }
+            with open(log_path_local, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception:
+            pass
+        # #endregion
+        
         if params_valid(IFs, fmin=0.0, fmax=fmax):
+            # #region agent log
+            try:
+                log_entry = {
+                    "sessionId": "debug-session",
+                    "runId": "run1",
+                    "hypothesisId": "Q",
+                    "location": "sample_generator.py:draw_valid_params_for_components:SUCCESS",
+                    "message": "Valid parameters found",
+                    "data": {
+                        "attempt": attempt + 1,
+                        "n_components": n_components,
+                        "signal_types": signal_types
+                    },
+                    "timestamp": int(time.time() * 1000)
+                }
+                with open(log_path_local, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps(log_entry) + "\n")
+            except Exception:
+                pass
+            # #endregion
             return xs, IFs, signal_types
         logger.debug(
             f"Attempt {attempt + 1} failed. IFs: "
             f"{[f'[{IF.min():.2f}, {IF.max():.2f}]' for IF in IFs]}"
         )
+    
+    # #region agent log
+    try:
+        log_entry = {
+            "sessionId": "debug-session",
+            "runId": "run1",
+            "hypothesisId": "R",
+            "location": "sample_generator.py:draw_valid_params_for_components:FAILED",
+            "message": "Failed to find valid parameters",
+            "data": {
+                "max_tries": max_tries,
+                "n_components": n_components,
+                "fmax": fmax,
+                "signal_scenario": signal_scenario
+            },
+            "timestamp": int(time.time() * 1000)
+        }
+        with open(log_path_local, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception:
+        pass
+    # #endregion
     
     raise SignalGenerationError(
         f"Could not find valid parameters within {max_tries} attempts."

@@ -14,7 +14,7 @@ chirp signals, along with functions to generate random parameters within
 valid ranges. Also provides a helper function for uniform parameter sampling.
 """
 
-from typing import List
+from typing import List, Optional
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -233,58 +233,142 @@ def sample_param(
     return rng.uniform(low, high)
 
 
-def gen_poly_params(rng: np.random.Generator) -> PolyPhaseParams:
+def gen_poly_params(
+    rng: np.random.Generator,
+    fmax: Optional[float] = None
+) -> PolyPhaseParams:
     """
     Generate random polynomial phase parameters.
     
     Why: Encapsulates the logic for sampling valid polynomial phase parameters
     from their respective ranges. This ensures parameters are always within
-    acceptable bounds for signal generation.
+    acceptable bounds for signal generation. When fmax is provided, parameters
+    are constrained to ensure IFs stay within [0, fmax].
     
     What: Samples six polynomial coefficients (a, b, c, d, e, h) from uniform
-    distributions over their respective ranges and returns a PolyPhaseParams
-    object containing these values.
+    distributions over their respective ranges. If fmax is provided, scales
+    the ranges to ensure the IF (kl * (b + 2ct + 3dt² + 4et³ + 5ht⁴)) stays
+    within [0, fmax] for typical signal durations.
     
     Args:
         rng: NumPy random number generator for reproducibility.
+        fmax: Optional maximum frequency in Hz. If provided, constrains
+            parameters to ensure IFs stay within [0, fmax]. Default None.
     
     Returns:
         PolyPhaseParams: A PolyPhaseParams object with randomly sampled
             coefficients within their valid ranges.
     """
+    # Default ranges
+    a_range = (-5.0, 5.0)
+    b_range = (0.0, 10.0)
+    c_range = (-2.0, 2.0)
+    d_range = (-2.0, 2.0)
+    e_range = (-1.0, 1.0)
+    h_range = (-0.5, 0.5)
+    
+    # If fmax is provided, scale ranges to keep IF within [0, fmax]
+    # Using kl=100.0 (default), IF = kl * (b + 2ct + 3dt² + 4et³ + 5ht⁴)
+    # For duration=2.0s, t_max=2.0, we need to ensure IF stays in [0, fmax]
+    # Conservative approach: ensure each term contributes safely
+    if fmax is not None:
+        kl = 100.0  # Default kl from poly_signal_and_if
+        duration = 2.0  # Default duration from config
+        t_max = duration
+        
+        # Ensure b*kl <= fmax, so b <= fmax/kl
+        b_max = fmax / kl
+        b_range = (0.0, min(10.0, b_max))
+        
+        # For higher order terms, ensure they don't push IF out of bounds
+        # We need to ensure: IF = kl * (b + 2ct + 3dt² + 4et³ + 5ht⁴) stays in [0, fmax]
+        # Since b >= 0, we need to ensure the sum of all terms stays in [0, fmax/kl]
+        # For t in [0, t_max], we need conservative bounds on c, d, e, h
+        # Strategy: allocate budget so b gets most, others get smaller shares
+        total_budget = fmax / kl  # Total budget for (b + 2ct + 3dt² + 4et³ + 5ht⁴)
+        
+        # Reserve 60% of budget for b, 40% for other terms combined
+        b_budget = total_budget * 0.6
+        other_budget = total_budget * 0.4
+        
+        # Update b_range to use the allocated budget
+        b_range = (0.0, min(10.0, b_budget))
+        
+        # For other terms, ensure worst-case contribution doesn't exceed budget
+        # Worst case: all terms have same sign and t=t_max
+        # We want: 2|c|*t_max + 3|d|*t_max² + 4|e|*t_max³ + 5|h|*t_max⁴ <= other_budget
+        # Conservative: allocate equal budget to each term
+        term_budget = other_budget / 4
+        
+        c_max = term_budget / (2 * t_max)
+        c_range = (-c_max, c_max)
+        
+        d_max = term_budget / (3 * t_max**2)
+        d_range = (-d_max, d_max)
+        
+        e_max = term_budget / (4 * t_max**3)
+        e_range = (-e_max, e_max)
+        
+        h_max = term_budget / (5 * t_max**4)
+        h_range = (-h_max, h_max)
+    
     return PolyPhaseParams(
-        a=sample_param(rng, low=-5.0, high=5.0),
-        b=sample_param(rng, low=0.0, high=10.0),
-        c=sample_param(rng, low=-2.0, high=2.0),
-        d=sample_param(rng, low=-2.0, high=2.0),
-        e=sample_param(rng, low=-1.0, high=1.0),
-        h=sample_param(rng, low=-0.5, high=0.5)
+        a=sample_param(rng, low=a_range[0], high=a_range[1]),
+        b=sample_param(rng, low=b_range[0], high=b_range[1]),
+        c=sample_param(rng, low=c_range[0], high=c_range[1]),
+        d=sample_param(rng, low=d_range[0], high=d_range[1]),
+        e=sample_param(rng, low=e_range[0], high=e_range[1]),
+        h=sample_param(rng, low=h_range[0], high=h_range[1])
     )
 
 
-def gen_coschirp_params(rng: np.random.Generator) -> CosChirpParams:
+def gen_coschirp_params(
+    rng: np.random.Generator,
+    fmax: Optional[float] = None
+) -> CosChirpParams:
     """
     Generate random cosine chirp parameters.
     
     Why: Encapsulates the logic for sampling valid cosine chirp parameters
     from their respective ranges. This ensures parameters are always within
-    acceptable bounds for signal generation.
+    acceptable bounds for signal generation. When fmax is provided, parameters
+    are constrained to ensure IFs stay within [0, fmax].
     
     What: Samples three cosine chirp coefficients (a, b, c) from uniform
-    distributions over their respective ranges and returns a CosChirpParams
-    object containing these values.
+    distributions over their respective ranges. If fmax is provided, scales
+    the ranges to ensure the IF (Ks * (c - a*b*π² * sin(bπt + π))) stays
+    within [0, fmax].
     
     Args:
         rng: NumPy random number generator for reproducibility.
+        fmax: Optional maximum frequency in Hz. If provided, constrains
+            parameters to ensure IFs stay within [0, fmax]. Default None.
     
     Returns:
         CosChirpParams: A CosChirpParams object with randomly sampled
             coefficients within their valid ranges.
     """
+    # Default ranges
+    a_range = (0.0, 2.0)
+    b_range = (0.0, 2.0)
+    c_range = (0.0, 20.0)
+    
+    # If fmax is provided, scale ranges to keep IF within [0, fmax]
+    # Using Ks=5.0 (default), IF = Ks * (c - a*b*π² * sin(...))
+    # Max IF is approximately Ks * (c + a*b*π²), so we need to constrain
+    if fmax is not None:
+        Ks = 5.0  # Default Ks from coschirp_signal_and_if
+        # Scale c to ensure c*Ks <= fmax (conservative)
+        c_range = (0.0, min(20.0, fmax / Ks))
+        # Scale a and b to reduce modulation amplitude
+        scale_factor = min(1.0, fmax / 2000.0)
+        a_range = (0.0, 2.0 * scale_factor)
+        b_range = (0.0, 2.0 * scale_factor)
+    
     return CosChirpParams(
-        a=sample_param(rng, low=0.0, high=2.0),
-        b=sample_param(rng, low=0.0, high=2.0),
-        c=sample_param(rng, low=0.0, high=20.0)
+        a=sample_param(rng, low=a_range[0], high=a_range[1]),
+        b=sample_param(rng, low=b_range[0], high=b_range[1]),
+        c=sample_param(rng, low=c_range[0], high=c_range[1])
     )
 
 
