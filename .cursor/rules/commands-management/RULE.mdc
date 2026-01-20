@@ -1,0 +1,622 @@
+---
+globs: **/.cursor/commands/**/*.md
+alwaysApply: false
+---
+
+## Mandate
+
+When creating or updating Cursor Commands, you **MUST** follow this guide strictly. This document defines the exact format, structure, and process for all commands in this repository.
+
+## What are Cursor Commands?
+
+Cursor Commands are reusable workflows defined as plain Markdown files that can be triggered with a `/` prefix in the chat input box. They help standardize processes across your team and make common tasks more efficient.
+
+Commands are stored in three locations:
+1. **Project commands**: Stored in `.cursor/commands` directory (version-controlled)
+2. **Global commands**: Stored in `~/.cursor/commands` directory (user-specific)
+3. **Team commands**: Created by team admins in the Cursor Dashboard (team-wide)
+
+Commands integrate with the project's Rules (`.cursor/rules`) to provide comprehensive, standardized processes for development, testing, security, deployment, and agent development.
+
+## Directory Structure
+
+Commands in this repository are organized by category:
+
+```
+.cursor/commands/
+├── testing/          # Testing and evaluation commands
+├── security/         # Security audit and compliance commands
+├── review/           # Code review and compliance check commands
+├── monitoring/       # Monitoring and observability commands
+├── deployment/       # Deployment and infrastructure commands
+├── agents/          # Agent development commands
+└── README.md        # Commands documentation
+```
+
+### Command File Structure
+
+Each command is a **markdown file** (`.md`) in the appropriate category directory:
+
+```
+.cursor/commands/
+  category-name/
+    command-name.md
+```
+
+**Important:**
+- Commands are plain markdown files (`.md` extension)
+- No frontmatter (unlike Rules)
+- File name = command name (kebab-case)
+- Command path = `/category-name/command-name`
+
+## Command File Format
+
+Every command file **MUST** follow this structure:
+
+### 1. Title (H1)
+
+The file **MUST** start with a single `#` heading as the command title:
+
+```markdown
+# Command Name
+```
+
+**Rules:**
+- Use title case (e.g., "Security Audit", "Run Test Suite")
+- Be descriptive and clear
+- Match the command's purpose
+
+### 2. Overview Section
+
+Immediately after the title, add an `## Overview` section:
+
+```markdown
+## Overview
+Brief description of what the command does and its purpose. This should be 1-2 sentences that clearly explain the command's functionality.
+```
+
+**Rules:**
+- Use `## Overview` (H2 heading)
+- Keep it concise (1-2 sentences)
+- Explain what the command does, not how
+- Include context about when to use it
+
+### 3. Rules Applied Section
+
+List all Rules that are integrated into the command:
+
+```markdown
+## Rules Applied
+- `rule-name-1` - Brief description of what this rule provides
+- `rule-name-2` - Brief description of what this rule provides
+```
+
+**Rules:**
+- Use `## Rules Applied` (H2 heading)
+- List each rule on a new line with `- ` (dash and space)
+- Use backticks around rule names: `` `rule-name` ``
+- Add brief description after dash (what the rule provides)
+- Reference rules by their folder name (e.g., `core-python-standards`)
+
+**Important:** Rules are applied automatically based on their type:
+- **Always Apply** rules are always active
+- **Apply Intelligently** rules are applied when Agent decides they're relevant
+- **Apply to Specific Files** rules are applied when working on matching files
+- **Apply Manually** rules must be tagged with `@rule-name` if needed
+
+### 4. Steps Section
+
+Detailed workflow steps the command follows:
+
+```markdown
+## Steps
+
+1. **Step Name**
+   - **Sub-step detail**: Description of what to do
+     - Nested detail if needed
+   - **Another sub-step**: More details
+   
+2. **Next Step Name**
+   - Action items
+```
+
+**Rules:**
+- Use `## Steps` (H2 heading)
+- Number steps sequentially (1, 2, 3, ...)
+- Use bold for step names: `**Step Name**`
+- Use nested lists for sub-steps
+- Be specific and actionable
+- Include error handling where applicable
+- For Master Commands, include calls to other commands
+
+### 5. Data Sources Section
+
+Sources of data the command analyzes:
+
+```markdown
+## Data Sources
+- Source type 1 (description)
+- Source type 2 (description)
+- Results from `/other-command/command-name` command
+```
+
+**Rules:**
+- Use `## Data Sources` (H2 heading)
+- List each data source on a new line
+- Be specific about file types, directories, or command outputs
+- Include references to other commands if data comes from them
+
+### 6. Output Section
+
+Description of the expected output:
+
+```markdown
+## Output
+A comprehensive report including:
+- **Output Item 1**: Description
+- **Output Item 2**: Description
+- **Output Item 3**: Description
+```
+
+**Rules:**
+- Use `## Output` (H2 heading)
+- Describe what the command produces
+- Use bullet points for multiple output items
+- Use bold for output item names
+- Be specific about report structure
+
+## Creating a New Command
+
+### Step 1: Determine Category
+
+Choose the appropriate category directory:
+- `testing/` - Testing and evaluation workflows
+- `security/` - Security audit and compliance
+- `review/` - Code review and compliance checks
+- `monitoring/` - Monitoring and observability
+- `deployment/` - Deployment and infrastructure
+- `agents/` - Agent development workflows
+
+### Step 2: Choose Command Name
+
+- Use kebab-case for file name (e.g., `run-test-suite.md`, `security-audit.md`)
+- Be descriptive and specific
+- Use verb-noun pattern when possible (e.g., `run-tests`, `create-node`)
+- For Master Commands, use `run-all-{category}` pattern (e.g., `run-all-testing.md`)
+
+### Step 3: Create File Structure
+
+Create the file in the appropriate category directory:
+```
+.cursor/commands/[category]/[command-name].md
+```
+
+### Step 4: Write Command Structure
+
+Follow the standard structure in order:
+
+1. **Title (H1)**: `# Command Name`
+2. **Overview**: `## Overview` with 1-2 sentence description
+3. **Rules Applied**: `## Rules Applied` with list of rules
+4. **Steps**: `## Steps` with numbered, detailed workflow
+5. **Data Sources**: `## Data Sources` with list of sources
+6. **Output**: `## Output` with description of expected output
+
+### Step 5: Write Steps in Detail
+
+For each step:
+- Use clear, actionable language
+- Include specific actions to take
+- Add error handling where needed
+- Reference other commands if calling them
+- Use nested lists for sub-tasks
+
+### Step 6: Integrate Rules
+
+In the "Rules Applied" section:
+- List all relevant rules
+- Use rule folder names (not file names)
+- Add brief description of what each rule provides
+- Ensure rules are appropriate for the command's purpose
+
+### Step 7: Validate Structure
+
+Ensure:
+- ✅ File is named correctly (kebab-case, `.md` extension)
+- ✅ All 6 sections are present in order
+- ✅ Steps are numbered and detailed
+- ✅ Rules Applied list is complete
+- ✅ Data Sources are specified
+- ✅ Output is clearly described
+
+## Updating an Existing Command
+
+### Step 1: Locate the Command
+
+Find the command in the appropriate category directory:
+```
+.cursor/commands/[category]/[command-name].md
+```
+
+### Step 2: Understand Current Structure
+
+- Read the existing command
+- Understand the current workflow
+- Note which rules are applied
+- Identify what needs to be updated
+
+### Step 3: Update Content
+
+When updating:
+- **Preserve** the standard structure (all 6 sections)
+- **Maintain** the existing style and format
+- **Update** only the necessary sections
+- **Keep** Rules Applied list current
+- **Ensure** steps remain actionable
+
+### Step 4: Update Rules Applied (if needed)
+
+If adding or removing rules:
+- Update the "Rules Applied" section
+- Ensure rule names match folder names
+- Add descriptions for new rules
+- Remove references to obsolete rules
+
+### Step 5: Validate
+
+After update:
+- ✅ All 6 sections are still present
+- ✅ Structure is maintained
+- ✅ Steps are still actionable
+- ✅ Rules Applied are current
+- ✅ Data Sources are accurate
+- ✅ Output description is updated
+
+## Master Commands
+
+Master Commands orchestrate multiple commands in a category. They follow the same structure but with special considerations:
+
+### Master Command Structure
+
+1. **Title**: Use `run-all-{category}` pattern
+2. **Overview**: Explain it runs all commands in the category
+3. **Rules Applied**: Include rules from all sub-commands
+4. **Steps**: 
+   - Execute each command in sequence
+   - Include error handling for each command
+   - Aggregate results
+   - Generate comprehensive report
+5. **Data Sources**: Include data from all sub-commands
+6. **Output**: Describe aggregated report
+
+### Master Command Best Practices
+
+- **Error Handling**: 
+  - Stop on critical failures
+  - Continue with warnings for non-critical issues
+  - Report partial results if some commands fail
+  
+- **Command Execution**:
+  - Execute commands in correct order
+  - Wait for completion before proceeding
+  - Handle dependencies between commands
+  
+- **Result Aggregation**:
+  - Combine results from all commands
+  - Create summary with overall status
+  - Highlight critical issues
+  - Provide prioritized recommendations
+
+### Master Command Example Pattern
+
+```markdown
+## Steps
+
+1. **Command 1**
+   - Execute `/category/command-1` command
+   - Wait for completion and review results
+   - **Error Handling**:
+     - If command fails: Stop execution and report blocking issues
+     - If command finds issues: Continue with warning, include in final report
+     - If command passes: Proceed to next step
+   - **Output**: Command 1 report with status
+
+2. **Command 2**
+   - Execute `/category/command-2` command
+   - [Similar error handling pattern]
+   
+3. **Generate Comprehensive Report**
+   - Aggregate results from all commands
+   - Create summary with overall status
+   - Highlight critical issues
+   - Provide prioritized recommendations
+```
+
+## Best Practices
+
+### Content Guidelines
+
+1. **Keep Commands Focused**
+   - Each command should do one specific thing well
+   - Avoid mixing unrelated workflows
+   - Split complex workflows into multiple commands
+
+2. **Be Actionable**
+   - Provide concrete, actionable steps
+   - Avoid vague instructions
+   - Include specific file paths, commands, or actions
+
+3. **Integrate with Rules**
+   - Reference relevant rules in "Rules Applied"
+   - Let rules provide the standards and best practices
+   - Don't duplicate rule content in commands
+
+4. **Clear Structure**
+   - Always follow the 6-section structure
+   - Use consistent formatting
+   - Number steps sequentially
+   - Use nested lists for sub-tasks
+
+5. **Error Handling**
+   - Include error handling in steps
+   - Specify what to do on failure
+   - For Master Commands, define when to stop vs continue
+
+### What to Avoid
+
+1. **Don't Add Frontmatter**
+   - Commands are plain markdown, no YAML frontmatter
+   - Unlike Rules, commands don't have metadata
+
+2. **Don't Duplicate Rule Content**
+   - Reference rules, don't copy their content
+   - Let rules provide the standards
+   - Commands provide the workflow
+
+3. **Don't Skip Sections**
+   - All 6 sections are required
+   - Even if a section seems minimal, include it
+
+4. **Don't Create Overlapping Commands**
+   - Check existing commands before creating new ones
+   - Reuse existing commands in Master Commands
+   - Avoid duplicating functionality
+
+5. **Don't Forget Error Handling**
+   - Especially important for Master Commands
+   - Define behavior on failures
+   - Specify when to stop vs continue
+
+## Integration with Rules
+
+Commands integrate with Rules through the "Rules Applied" section:
+
+### How Rules are Applied
+
+1. **Always Apply Rules**: Automatically active, no action needed
+2. **Apply Intelligently Rules**: Agent decides if relevant based on description
+3. **Apply to Specific Files Rules**: Applied when working on matching files
+4. **Apply Manually Rules**: Must be tagged with `@rule-name` if needed
+
+### Referencing Rules
+
+In "Rules Applied" section:
+- Use rule folder names (e.g., `core-python-standards`)
+- Not file names (not `RULE.md`)
+- Add brief description of what the rule provides
+- List all relevant rules for the command
+
+### Rules vs Commands
+
+- **Rules**: Define standards, best practices, and guidelines
+- **Commands**: Define workflows and processes that use those standards
+- Commands reference Rules, Rules don't reference Commands
+
+## Examples
+
+### Example 1: Standard Command
+
+**Location:** `.cursor/commands/testing/run-test-suite.md`
+
+```markdown
+# Run Test Suite
+
+## Overview
+Execute the full test suite and systematically analyze results, identify failures, and provide actionable recommendations.
+
+## Rules Applied
+- `tests-and-validation` - Testing framework standards and test structure
+- `core-python-standards` - Code quality standards
+
+## Steps
+
+1. **Run Test Suite**
+   - Execute `pytest` with verbose output
+   - Capture test results and coverage
+   - Identify failures and categorize them
+
+2. **Analyze Results**
+   - Review test failures
+   - Identify root causes
+   - Prioritize fixes
+
+## Data Sources
+- Test files in `tests/` directory
+- Test execution output
+- Coverage reports
+
+## Output
+A comprehensive test report including:
+- **Test Execution Status**: Pass/Fail summary
+- **Failure Analysis**: Detailed failure reports
+- **Recommendations**: Prioritized fix suggestions
+```
+
+### Example 2: Master Command
+
+**Location:** `.cursor/commands/testing/run-all-testing.md`
+
+```markdown
+# Run All Testing
+
+## Overview
+Execute all testing commands in sequence: test suite, evaluation suite, and LLM Judge evaluation. This master command runs the complete testing workflow.
+
+## Rules Applied
+- `tests-and-validation` - Testing framework standards
+- `llm-evaluation-and-metrics` - LLM evaluation standards
+- `llm-judge-protocol` - LLM Judge evaluation protocol
+- `core-python-standards` - Code quality standards
+
+## Steps
+
+1. **Run Test Suite**
+   - Execute `/testing/run-test-suite` command
+   - Wait for completion and review results
+   - **Error Handling**:
+     - If tests fail: Stop execution and report blocking issues
+     - If tests pass: Proceed to next step
+   - **Output**: Test execution report
+
+2. **Run Evaluation Suite**
+   - Execute `/testing/run-evaluation-suite` command
+   - [Similar pattern]
+
+3. **Evaluate with LLM Judge**
+   - Execute `/testing/evaluate-with-llm-judge` command
+   - [Similar pattern]
+
+4. **Generate Comprehensive Report**
+   - Aggregate results from all commands
+   - Create summary with overall status
+   - Highlight critical issues
+
+## Data Sources
+- Results from `/testing/run-test-suite` command
+- Results from `/testing/run-evaluation-suite` command
+- Results from `/testing/evaluate-with-llm-judge` command
+
+## Output
+A comprehensive testing report including:
+- **Overall Testing Status**: Pass/Fail/Needs Attention
+- **Test Suite Summary**: Pass rate, failures
+- **Evaluation Suite Summary**: Metrics scores
+- **LLM Judge Summary**: Score, verdict, critical failures
+- **Critical Issues**: Blocking issues
+- **Recommendations**: Prioritized suggestions
+```
+
+### Example 3: Command with Multiple Rules
+
+**Location:** `.cursor/commands/security/security-audit.md`
+
+```markdown
+# Security Audit
+
+## Overview
+Comprehensive security review to identify and fix vulnerabilities in the codebase, infrastructure, and dependencies.
+
+## Rules Applied
+- `security-governance-and-observability` - Security governance, OWASP Top 10, NIST AI RMF
+- `audit-protocol` - Audit trail requirements and compliance checks
+- `configuration-and-dependency-injection` - Secrets management and configuration security
+
+## Steps
+
+1. **Dependency Audit**
+   - Check for known vulnerabilities
+   - Review third-party dependencies
+   - Update recommendations
+
+2. **Code Security Review**
+   - Review OWASP Top 10 for LLM Applications
+   - Check authentication/authorization
+   - Audit data handling practices
+
+3. **Infrastructure Security**
+   - Review environment variables
+   - Check access controls
+   - Audit network security
+
+## Data Sources
+- Dependency files (`requirements.txt`, `pyproject.toml`)
+- Source code files
+- Environment configuration files
+- Infrastructure configuration
+
+## Output
+A comprehensive security audit report including:
+- **Dependency Audit Results**: Vulnerable packages, CVEs
+- **Code Security Findings**: OWASP Top 10 compliance status
+- **Infrastructure Security Assessment**: Access controls, network security
+- **Prioritized Recommendations**: Actionable fixes with severity levels
+```
+
+## Validation Checklist
+
+Before finalizing any command creation or update, verify:
+
+- [ ] File name is kebab-case with `.md` extension
+- [ ] File is in correct category directory
+- [ ] All 6 sections are present in order:
+  - [ ] Title (H1)
+  - [ ] Overview (H2)
+  - [ ] Rules Applied (H2)
+  - [ ] Steps (H2)
+  - [ ] Data Sources (H2)
+  - [ ] Output (H2)
+- [ ] Steps are numbered sequentially
+- [ ] Rules Applied list uses rule folder names (not file names)
+- [ ] Rules Applied includes brief descriptions
+- [ ] Steps are actionable and specific
+- [ ] Error handling is included (especially for Master Commands)
+- [ ] Data Sources are clearly specified
+- [ ] Output description is complete
+- [ ] No frontmatter (plain markdown only)
+- [ ] Command follows project conventions
+
+## Quick Reference: Command Structure Template
+
+```markdown
+# Command Name
+
+## Overview
+Brief description of what the command does and its purpose.
+
+## Rules Applied
+- `rule-name-1` - Brief description of what this rule provides
+- `rule-name-2` - Brief description of what this rule provides
+
+## Steps
+
+1. **Step Name**
+   - **Sub-step detail**: Description of what to do
+   - **Another sub-step**: More details
+   
+2. **Next Step Name**
+   - Action items
+
+## Data Sources
+- Source type 1 (description)
+- Source type 2 (description)
+
+## Output
+A comprehensive report including:
+- **Output Item 1**: Description
+- **Output Item 2**: Description
+```
+
+## When Tagged
+
+When a user tags `@commands-management` or asks you to create/update a command:
+
+1. **Identify the task:** Creating new command or updating existing?
+2. **Determine category:** Which category directory is appropriate?
+3. **Choose command name:** Use kebab-case, descriptive name
+4. **Follow the structure:** Use the 6-section structure strictly
+5. **Integrate rules:** List relevant rules in "Rules Applied"
+6. **Write detailed steps:** Make steps actionable and specific
+7. **Validate:** Run through the checklist before completion
+8. **Confirm:** Show the user what was created/updated
+
+Remember: **Always follow this guide exactly** when working with commands. Consistency is critical for maintainability and team collaboration.

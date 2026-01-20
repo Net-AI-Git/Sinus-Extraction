@@ -1,0 +1,285 @@
+---
+description: "Graph traversal testing for validating agent workflow paths and node sequences"
+alwaysApply: false
+---
+
+## Mandate
+
+All agentic workflows **MUST** include Graph Traversal Tests to validate that agents traverse the correct nodes in the correct sequence. In multi-agent systems, a small change in an Orchestrator prompt can break the entire chain. Senior engineers require tests that verify the agent chose the correct path through the graph, not just whether the final answer is correct.
+
+## 1. Testing Requirements
+
+### Node Sequence Validation
+
+* **Mandate:** Every workflow must include tests that validate the sequence of nodes executed.
+
+* **Validation Requirements:**
+  * **Expected Path Tests:** Verify agent traversed expected node sequence
+  * **Forbidden Path Tests:** Verify agent did NOT traverse forbidden paths
+  * **Node Coverage Tests:** Verify all required nodes were executed
+  * **Sequence Order Tests:** Verify nodes executed in correct order
+
+* **Test Coverage:**
+  * Test all conditional routing branches
+  * Test error handling paths
+  * Test human-in-the-loop paths
+  * Test graceful degradation paths
+
+**See:** `@examples_traversal_tests.py` for test implementation patterns.
+
+### Chain-of-Thought Validation
+
+* **Mandate:** Tests must validate that the agent chose the correct reasoning path, not just the final output.
+
+* **Validation Aspects:**
+  * **Decision Points:** Verify correct decisions at conditional routing points
+  * **Reasoning Chain:** Validate the logical flow of decisions
+  * **Path Selection:** Ensure agent selected optimal path for the task
+  * **Alternative Paths:** Verify agent did not take suboptimal paths
+
+* **Integration:**
+  * Use execution traces to reconstruct reasoning chain
+  * Compare actual path with expected path
+  * Identify deviations and their causes
+
+## 2. Test Types
+
+### Expected Path Tests
+
+* **Purpose:** Verify agent follows expected node sequence for given input.
+
+* **Test Structure:**
+  * **Input:** Test input (user request, state)
+  * **Expected Path:** List of expected node names in order
+  * **Validation:** Compare actual execution path with expected path
+
+* **Use Cases:**
+  * Happy path scenarios
+  * Standard workflow patterns
+  * Critical business logic paths
+
+**See:** `@examples_traversal_tests.py` for ExpectedPathTest implementation.
+
+### Forbidden Path Tests
+
+* **Purpose:** Verify agent does NOT traverse forbidden or dangerous paths.
+
+* **Test Structure:**
+  * **Input:** Test input
+  * **Forbidden Nodes:** List of nodes that should NOT be executed
+  * **Forbidden Sequences:** Sequences of nodes that should NOT occur
+  * **Validation:** Verify forbidden nodes/sequences were not executed
+
+* **Use Cases:**
+  * Security-sensitive operations
+  * Expensive operations that should be avoided
+  * Error-prone paths
+  * Deprecated workflows
+
+**See:** `@examples_traversal_tests.py` for ForbiddenPathTest implementation.
+
+### Node Coverage Tests
+
+* **Purpose:** Verify all required nodes were executed for a given scenario.
+
+* **Test Structure:**
+  * **Input:** Test input
+  * **Required Nodes:** Set of nodes that must be executed
+  * **Optional Nodes:** Set of nodes that may be executed
+  * **Validation:** Verify required nodes executed, optional nodes may have executed
+
+* **Use Cases:**
+  * Multi-agent workflows (verify all workers executed)
+  * Validation workflows (verify all validation steps)
+  * Processing pipelines (verify all processing stages)
+
+**See:** `@examples_traversal_tests.py` for NodeCoverageTest implementation.
+
+### Sequence Validation Tests
+
+* **Purpose:** Verify nodes executed in correct order, respecting dependencies.
+
+* **Test Structure:**
+  * **Input:** Test input
+  * **Dependencies:** Node dependency graph (A must execute before B)
+  * **Validation:** Verify all dependencies satisfied
+
+* **Use Cases:**
+  * Workflows with strict ordering requirements
+  * Multi-stage processing
+  * Validation before execution patterns
+
+**See:** `@examples_traversal_tests.py` for SequenceValidationTest implementation.
+
+## 3. Execution Trace Analysis
+
+### Trace Collection
+
+* **Mandate:** Tests must use execution traces to validate traversal.
+
+* **Trace Sources:**
+  * **LangGraph Traces:** Execution traces from LangGraph workflows
+  * **LangSmith Traces:** Traces from LangSmith monitoring
+  * **Custom Logging:** Custom execution logging in nodes
+
+* **Trace Structure:**
+  * Node execution sequence
+  * Timestamps for each node
+  * State transitions
+  * Conditional routing decisions
+  * Error events
+
+### Trace Analysis
+
+* **Path Extraction:**
+  * Extract node sequence from trace
+  * Identify conditional routing decisions
+  * Map state transitions to node executions
+  * Reconstruct reasoning chain
+
+* **Comparison:**
+  * Compare actual path with expected path
+  * Identify missing nodes
+  * Identify unexpected nodes
+  * Identify sequence violations
+
+**See:** `@examples_traversal_tests.py` for trace analysis patterns.
+
+## 4. Integration Points
+
+### LLM Evaluation Integration
+
+* **Combined Testing:**
+  * Use Graph Traversal Tests alongside output quality tests
+  * Validate both path correctness and output quality
+  * Identify cases where correct path produces poor output
+
+* **See:** `llm-evaluation-and-metrics.md` for evaluation integration.
+
+### Monitoring Integration
+
+* **Production Monitoring:**
+  * Monitor actual execution paths in production
+  * Alert on unexpected paths
+  * Track path distribution
+  * Identify path regressions
+
+* **See:** `monitoring-and-observability.md` for monitoring integration.
+
+### LangGraph Integration
+
+* **Workflow Structure:**
+  * Use workflow graph structure to define expected paths
+  * Validate against graph topology
+  * Test all edges and conditional routes
+
+* **See:** `langgraph-architecture-and-nodes.md` for workflow patterns.
+
+## 5. Regression Detection
+
+### Path Regression Testing
+
+* **Mandate:** Graph Traversal Tests must detect regressions when workflow changes.
+
+* **Regression Scenarios:**
+  * **Prompt Changes:** Orchestrator prompt change causes different routing
+  * **Node Changes:** Node logic change causes different path selection
+  * **State Changes:** State schema change causes routing issues
+  * **Configuration Changes:** Config change causes different behavior
+
+* **Detection Methods:**
+  * Compare current execution paths with baseline
+  * Identify path changes in test suite
+  * Alert on unexpected path deviations
+  * Track path stability over time
+
+### Test Maintenance
+
+* **Baseline Management:**
+  * Maintain baseline of expected paths
+  * Update baselines when intentional changes made
+  * Version control baseline paths
+  * Document path change rationale
+
+* **Test Updates:**
+  * Update tests when workflow structure changes
+  * Add tests for new paths
+  * Remove tests for deprecated paths
+  * Keep tests synchronized with workflow
+
+## 6. Best Practices
+
+### Test Design
+
+* **Comprehensive Coverage:**
+  * Test all major paths through workflow
+  * Test error handling paths
+  * Test edge cases and boundary conditions
+  * Test conditional routing branches
+
+* **Test Clarity:**
+  * Use descriptive test names
+  * Document expected paths clearly
+  * Explain why paths are expected/forbidden
+  * Include context in test descriptions
+
+### Test Execution
+
+* **CI/CD Integration:**
+  * Run Graph Traversal Tests in CI/CD pipeline
+  * Fail builds on path regressions
+  * Include path tests in PR checks
+  * Run subset of tests for fast feedback
+
+* **Performance:**
+  * Optimize test execution time
+  * Use mocks for expensive operations
+  * Parallelize independent tests
+  * Cache execution traces when possible
+
+### Test Maintenance
+
+* **Regular Updates:**
+  * Review and update tests regularly
+  * Remove obsolete tests
+  * Add tests for new paths
+  * Refactor tests for maintainability
+
+* **Documentation:**
+  * Document test coverage
+  * Explain path selection rationale
+  * Document expected vs actual path differences
+  * Maintain test run history
+
+## 7. Advanced Patterns
+
+### Conditional Path Testing
+
+* **Dynamic Paths:**
+  * Test paths that depend on input characteristics
+  * Test paths that depend on state
+  * Test paths that depend on external conditions
+
+* **Path Variants:**
+  * Test multiple valid paths for same input
+  * Test path selection based on optimization criteria
+  * Test fallback paths
+
+### Multi-Agent Path Testing
+
+* **Orchestrator Paths:**
+  * Test Orchestrator decision-making paths
+  * Verify correct SECTION creation
+  * Validate worker assignment logic
+
+* **Worker Paths:**
+  * Test individual worker execution paths
+  * Verify worker specialization
+  * Test worker error handling
+
+* **Synthesizer Paths:**
+  * Test Synthesizer aggregation paths
+  * Verify conflict resolution logic
+  * Test output generation paths
+
+**See:** `multi-agent-systems.md` for multi-agent patterns.

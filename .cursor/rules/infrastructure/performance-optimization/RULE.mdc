@@ -1,0 +1,350 @@
+---
+description: "Performance optimization strategies including caching, query optimization, and resource pooling"
+alwaysApply: false
+---
+
+## 1. Caching Strategies
+
+* **Redis Caching:**
+    * **Use Cases:** Cache frequently accessed data, session data, API responses.
+    * **TTL:** Set appropriate Time-To-Live (TTL) for cached data.
+    * **Invalidation:** Implement cache invalidation strategies (time-based, event-based).
+    * **Serialization:** Use efficient serialization (msgpack, orjson) for better performance.
+
+* **In-Memory Caching:**
+    * **Python `functools.lru_cache`:** Use for function result caching.
+    * **Cache Size Limits:** Set maximum cache size to prevent memory issues.
+    * **Thread Safety:** Use thread-safe caching for multi-threaded applications.
+
+* **CDN Caching:**
+    * **Static Assets:** Serve static files (images, CSS, JS) via CDN.
+    * **API Responses:** Cache API responses at CDN level when appropriate (with proper cache headers).
+
+* **Cache-Aside Pattern:**
+    1. Check cache for data.
+    2. If miss, fetch from source.
+    3. Store in cache for future requests.
+    4. Return data to caller.
+
+**See:** `@examples_caching.py` for cache-aside pattern implementation.
+
+* **Write-Through Pattern:**
+    * Write to cache and source simultaneously.
+    * Ensures cache and source are always in sync.
+
+* **Write-Back Pattern:**
+    * Write to cache first, then asynchronously write to source.
+    * Improves write performance but requires careful handling of cache failures.
+
+* **See:** `agentic-logic-and-tools.md` for module-level caching patterns specific to agents.
+
+## 2. CDN Usage
+
+* **Static Content:** Serve static files (images, documents, videos) via CDN.
+    * **Benefits:** Reduced latency, lower origin server load, global distribution.
+
+* **API Acceleration:**
+    * **Edge Caching:** Cache API responses at CDN edge when appropriate.
+    * **Cache Headers:** Use proper cache headers (`Cache-Control`, `ETag`, `Last-Modified`).
+
+* **Dynamic Content:**
+    * **Edge Computing:** Use CDN edge functions for lightweight processing.
+    * **Origin Shield:** Use origin shield to reduce origin requests.
+
+* **Configuration:**
+    * **TTL Settings:** Configure appropriate TTL for different content types.
+    * **Purge:** Implement cache purge mechanism for immediate updates.
+
+## 3. Database Query Optimization
+
+* **Indexing:**
+    * **Primary Keys:** Always define primary keys.
+    * **Foreign Keys:** Index foreign key columns.
+    * **Query Analysis:** Analyze slow queries and add indexes for frequently filtered/sorted columns.
+    * **Composite Indexes:** Create composite indexes for multi-column queries.
+
+* **Query Patterns:**
+    * **Avoid N+1 Queries:** Use eager loading or batch queries to fetch related data.
+    * **Select Specific Columns:** Select only required columns instead of `SELECT *`.
+    * **Limit Results:** Use `LIMIT` to restrict result set size.
+    * **Pagination:** Implement cursor-based or offset-based pagination for large datasets.
+
+* **Connection Pooling:**
+    * **Pool Size:** Configure appropriate connection pool size.
+    * **Timeout:** Set connection timeout and query timeout.
+    * **See:** Connection Pooling section below for details.
+
+* **Query Caching:**
+    * **Application-Level:** Cache query results in Redis when appropriate.
+    * **Database-Level:** Enable database query cache if supported.
+
+* **Batch Operations:**
+    * **Bulk Inserts:** Use bulk insert operations instead of individual inserts.
+    * **Batch Updates:** Group multiple updates into batch operations.
+
+## 4. Batch Processing Patterns
+
+* **Batching Strategy:**
+    * **Size-Based:** Process items in fixed-size batches (e.g., 100 items per batch).
+    * **Time-Based:** Process items at fixed intervals (e.g., every 5 minutes).
+    * **Hybrid:** Combine size and time-based batching.
+
+* **Parallel Processing:**
+    * **Async Batching:** Use `asyncio.gather()` to process batches in parallel.
+    * **Worker Pools:** Use worker pools for CPU-intensive batch processing.
+
+**See:** `@examples_batching.py` for batch processing pattern implementation.
+
+* **Error Handling:**
+    * **Partial Success:** Handle partial batch failures gracefully.
+    * **Retry Logic:** Implement retry logic for failed batch items.
+    * **Dead Letter Queue:** Send failed items to DLQ for manual processing.
+
+* **Monitoring:**
+    * **Batch Metrics:** Track batch size, processing time, success/failure rates.
+    * **Throughput:** Monitor items processed per second.
+
+## 5. Lazy Loading Strategies
+
+* **Lazy Initialization:**
+    * **On-Demand Loading:** Load resources only when needed.
+    * **Example:** Load database connections, external clients on first use.
+
+* **Lazy Evaluation:**
+    * **Generators:** Use Python generators for large datasets.
+    * **Iterator Pattern:** Use iterators to process data incrementally.
+
+* **Deferred Imports:**
+    * **Heavy Libraries:** Import heavy libraries only when needed.
+    * **Example:** Import ML models only when prediction is required.
+
+* **Lazy Properties:**
+    * **`@property` Decorator:** Use `@property` with lazy initialization for expensive computations.
+    * **Caching:** Cache computed values to avoid recomputation.
+
+## 6. Resource Pooling
+
+* **Connection Pooling:**
+    * **Database Connections:** Use connection pools for database connections.
+        * **SQLAlchemy:** Configure pool size, max overflow, pool timeout.
+        * **AsyncPG:** Use connection pools for async PostgreSQL connections.
+    * **HTTP Connections:** Reuse HTTP connections using connection pools (httpx, aiohttp).
+
+**See:** `@examples_connection_pooling.py` for connection pool configuration pattern.
+
+* **Thread/Process Pools:**
+    * **ThreadPoolExecutor:** Use for I/O-bound tasks.
+    * **ProcessPoolExecutor:** Use for CPU-bound tasks (see `core-python-standards.md`).
+
+* **Object Pooling:**
+    * **Reusable Objects:** Pool expensive-to-create objects (parsers, validators).
+    * **Example:** Reuse PDF parsers, XML parsers across requests.
+
+* **Pool Configuration:**
+    * **Size:** Configure pool size based on expected load and resource limits.
+    * **Timeout:** Set timeout for acquiring resources from pool.
+    * **Monitoring:** Monitor pool usage and adjust size as needed.
+
+## 7. Connection Pooling
+
+* **Database Connection Pools:**
+    * **SQLAlchemy:**
+        * **Pool Size:** Set `pool_size` (default: 5).
+        * **Max Overflow:** Set `max_overflow` for additional connections.
+        * **Pool Timeout:** Set `pool_timeout` for connection acquisition timeout.
+        * **Pool Recycle:** Set `pool_recycle` to refresh stale connections.
+
+    * **AsyncPG:**
+        * **Min/Max Size:** Configure minimum and maximum pool size.
+        * **Max Queries:** Set maximum queries per connection before recycling.
+
+* **HTTP Connection Pools:**
+    * **httpx:**
+        * **Connection Limits:** Configure connection limits per host.
+        * **Keep-Alive:** Enable HTTP keep-alive for connection reuse.
+
+    * **aiohttp:**
+        * **Connector Limits:** Set connection limits and TTL.
+
+* **Best Practices:**
+    * **Size Appropriately:** Size pools based on expected concurrent requests.
+    * **Monitor Usage:** Track pool usage and adjust size as needed.
+    * **Handle Exhaustion:** Implement proper error handling when pools are exhausted.
+
+## 8. Performance Monitoring
+
+* **Profiling:**
+    * **Application Profiling:** Use profiling tools to identify bottlenecks (see `monitoring-and-observability.md`).
+    * **Database Profiling:** Enable slow query logs and analyze query performance.
+
+* **Metrics:**
+    * **Latency:** Track P50, P95, P99 latency.
+    * **Throughput:** Monitor requests per second.
+    * **Resource Usage:** Track CPU, memory, network usage.
+    * **Cache Hit Rate:** Monitor cache hit/miss ratios.
+
+* **Performance Testing:**
+    * **Load Testing:** Conduct load tests to identify performance limits.
+    * **Stress Testing:** Test system behavior under extreme load.
+    * **Baseline:** Establish performance baselines and track regressions.
+
+* **Optimization Cycle:**
+    1. Measure current performance.
+    2. Identify bottlenecks.
+    3. Implement optimizations.
+    4. Measure improvement.
+    5. Repeat as needed.
+
+## 9. Semantic Caching
+
+### Mandate
+
+All agentic systems **MUST** implement semantic caching using Vector DB to avoid redundant LLM calls for semantically similar queries. Traditional caching uses exact key matching, but semantic caching identifies similar queries by meaning, dramatically reducing costs and latency. This is critical for production systems where similar questions are asked repeatedly with different wording.
+
+### Semantic Similarity Detection
+
+* **Vector-Based Similarity:**
+  * **Embedding Generation:** Generate embeddings for queries using embedding models
+  * **Similarity Calculation:** Calculate cosine similarity between query embeddings
+  * **Similarity Threshold:** Define similarity threshold for cache hits (e.g., 0.85)
+  * **Semantic Matching:** Match queries based on semantic meaning, not exact text
+
+* **Similarity Metrics:**
+  * **Cosine Similarity:** Use cosine similarity for embedding comparison
+  * **Euclidean Distance:** Alternative distance metric for embeddings
+  * **Threshold Configuration:** Configure similarity threshold per use case
+  * **Dynamic Thresholds:** Adjust thresholds based on query type or context
+
+**See:** `@examples_caching.py` for semantic similarity detection implementation.
+
+### Vector DB Integration
+
+* **Vector Database Selection:**
+  * **Pinecone:** Use Pinecone for managed vector database
+  * **Weaviate:** Use Weaviate for self-hosted vector database
+  * **Qdrant:** Use Qdrant for open-source vector database
+  * **Chroma:** Use Chroma for lightweight vector database
+
+* **Cache Storage:**
+  * **Query Embeddings:** Store query embeddings in vector DB
+  * **Response Storage:** Store LLM responses with embeddings
+  * **Metadata Storage:** Store metadata (timestamp, cost, quality) with responses
+  * **Index Management:** Maintain vector index for fast similarity search
+
+* **Cache Lookup:**
+  * **Embedding Generation:** Generate embedding for incoming query
+  * **Similarity Search:** Search for similar queries in vector DB
+  * **Threshold Filtering:** Filter results by similarity threshold
+  * **Top-K Retrieval:** Retrieve top-K most similar cached responses
+
+**See:** `memory-and-archival-management.md` for Vector DB integration patterns.
+
+### Similarity Threshold Configuration
+
+* **Threshold Selection:**
+  * **High Threshold (0.9+):** Very similar queries only (high precision, lower recall)
+  * **Medium Threshold (0.8-0.9):** Moderately similar queries (balanced)
+  * **Low Threshold (0.7-0.8):** Loosely similar queries (higher recall, lower precision)
+  * **Context-Aware:** Adjust threshold based on query context or domain
+
+* **Threshold Tuning:**
+  * **Performance Metrics:** Monitor cache hit rate vs quality
+  * **Cost Savings:** Track cost savings from cache hits
+  * **Quality Validation:** Validate cached response quality
+  * **A/B Testing:** Test different thresholds to find optimal value
+
+* **Dynamic Thresholds:**
+  * **Query Type:** Different thresholds for different query types
+  * **Domain:** Different thresholds for different domains
+  * **User Context:** Adjust thresholds based on user context
+  * **Time-Based:** Adjust thresholds based on time (e.g., lower for recent queries)
+
+**See:** `@examples_caching.py` for similarity threshold configuration.
+
+### Cache Invalidation Strategies
+
+* **Time-Based Invalidation:**
+  * **TTL (Time-To-Live):** Set TTL for cached responses (e.g., 24 hours)
+  * **Expiration:** Expire cached responses after time period
+  * **Refresh Policy:** Refresh cache entries periodically
+  * **Age-Based:** Invalidate based on cache entry age
+
+* **Event-Based Invalidation:**
+  * **Data Updates:** Invalidate when source data is updated
+  * **Model Updates:** Invalidate when LLM model is updated
+  * **Prompt Updates:** Invalidate when prompts are updated
+  * **Context Changes:** Invalidate when context significantly changes
+
+* **Similarity-Based Invalidation:**
+  * **Similarity Decay:** Reduce similarity score over time
+  * **Quality-Based:** Invalidate low-quality cached responses
+  * **Confidence-Based:** Invalidate low-confidence cached responses
+  * **Feedback-Based:** Invalidate based on user feedback
+
+* **Manual Invalidation:**
+  * **Cache Clear:** Manual cache clearing for testing
+  * **Selective Invalidation:** Invalidate specific cache entries
+  * **Pattern-Based:** Invalidate entries matching patterns
+  * **Bulk Operations:** Bulk invalidation operations
+
+**See:** `@examples_caching.py` for cache invalidation implementation.
+
+### Cost Savings Calculation
+
+* **Cost Tracking:**
+  * **Cache Hit Cost:** Track cost saved per cache hit (LLM call avoided)
+  * **Cache Miss Cost:** Track cost of cache miss (LLM call made)
+  * **Total Savings:** Calculate total cost savings from caching
+  * **ROI Calculation:** Calculate return on investment for caching
+
+* **Metrics:**
+  * **Cache Hit Rate:** Percentage of queries served from cache
+  * **Cost Per Query:** Average cost per query (with caching)
+  * **Savings Per Query:** Average savings per query
+  * **Total Savings:** Total cost savings over time period
+
+* **Reporting:**
+  * **Daily Reports:** Generate daily cost savings reports
+  * **Weekly Reports:** Generate weekly cost savings reports
+  * **Monthly Reports:** Generate monthly cost savings reports
+  * **Dashboard:** Display cost savings in monitoring dashboard
+
+**See:** `@examples_caching.py` for cost savings calculation.
+
+### Integration with Memory Management
+
+* **Memory Integration:**
+  * **Shared Vector DB:** Use same Vector DB for memory and caching
+  * **Unified Embeddings:** Use same embedding model for consistency
+  * **Cross-Reference:** Cross-reference cached responses with user memories
+  * **Memory-Aware Caching:** Consider user memory when caching
+
+* **Storage Strategy:**
+  * **Separate Namespaces:** Use separate namespaces for cache vs memory
+  * **Metadata Distinction:** Distinguish cache entries from memory entries
+  * **Lifecycle Management:** Different lifecycle for cache vs memory
+  * **Retrieval Strategy:** Different retrieval strategies for cache vs memory
+
+**See:** `memory-and-archival-management.md` for memory management integration.
+
+### Best Practices
+
+* **Embedding Model Selection:**
+  * **Model Quality:** Use high-quality embedding models for accurate similarity
+  * **Model Consistency:** Use same embedding model for cache and queries
+  * **Model Updates:** Handle embedding model updates carefully
+  * **Model Cost:** Consider embedding model cost vs LLM cost savings
+
+* **Cache Size Management:**
+  * **Size Limits:** Set limits on cache size to prevent unbounded growth
+  * **Eviction Policy:** Implement eviction policy (LRU, LFU, similarity-based)
+  * **Storage Optimization:** Optimize storage for vector embeddings
+  * **Index Optimization:** Optimize vector index for fast search
+
+* **Quality Assurance:**
+  * **Quality Validation:** Validate cached response quality
+  * **A/B Testing:** Test cached vs non-cached responses
+  * **User Feedback:** Collect user feedback on cached responses
+  * **Quality Monitoring:** Monitor quality metrics for cached responses
+
+**See:** `@examples_caching.py` for semantic caching implementation.

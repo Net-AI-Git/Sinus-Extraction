@@ -1,0 +1,342 @@
+---
+alwaysApply: false
+---
+
+# Helper Files Guide for Rules
+
+This guide explains how to use helper files (example files) to keep your `RULE.mdc` files clean, focused, and maintainable.
+
+**See:** `@rules-management` for the main rules management guide.
+
+## Mandate: Use Helper Files for Code Examples
+
+**CRITICAL:** When writing rules with code examples, you **MUST** use separate helper files instead of embedding large code blocks directly in `RULE.mdc`. This keeps rules focused on guidance rather than implementation details.
+
+## Why Use Helper Files?
+
+1. **Keep Rules Focused:** Rules should provide guidance and standards, not be code repositories
+2. **Prevent Bloat:** Avoid making `RULE.mdc` files excessively long (target: under 400 lines)
+3. **Maintainability:** Code examples in separate files are easier to update and test
+4. **Reusability:** Helper files can be referenced from multiple places
+5. **Readability:** Shorter rules are easier to understand and navigate
+
+## When to Use Helper Files
+
+**ALWAYS use helper files when:**
+
+- ✅ Rule is approaching 300+ lines
+- ✅ Rule contains multiple code examples (3+)
+- ✅ Code examples are long (15+ lines each)
+- ✅ Examples demonstrate different patterns or use cases
+- ✅ You want to keep the rule focused on guidance rather than implementation details
+- ✅ Examples are complex and would benefit from being runnable/testable
+
+**You MAY include inline code when:**
+
+- ✅ Rule has only 1-2 very short examples (under 10 lines each)
+- ✅ Examples are simple one-liners or configuration snippets
+- ✅ Rule is under 200 lines total
+
+## Helper File Structure
+
+### Folder Organization
+
+Helper files should be placed in the **same folder** as `RULE.mdc`:
+
+```
+.cursor/rules/[category]/[rule-name]/
+  RULE.mdc                    # Main rule file (guidance and standards)
+  examples_basic.py           # Basic implementation examples
+  examples_advanced.py        # Advanced patterns
+  examples_integration.py     # Integration examples
+  examples_config.py          # Configuration examples
+  examples_*.{ext}            # Other example files as needed
+```
+
+### Naming Conventions
+
+- **Prefix:** Always use `examples_` prefix for clarity
+- **Descriptive names:** Use descriptive suffixes (e.g., `examples_server.py`, `examples_client.py`)
+- **File extensions:** Use appropriate extensions (`.py`, `.ts`, `.yaml`, etc.)
+- **Examples:**
+  - `examples_basic.py`
+  - `examples_advanced.py`
+  - `examples_integration.py`
+  - `examples_config.yaml`
+  - `examples_typescript.ts`
+
+## How to Reference Helper Files
+
+### Reference Syntax
+
+Use `@filename` syntax to reference helper files in your `RULE.mdc`:
+
+```markdown
+## Server Implementation
+
+For complete server implementation examples, see: `@examples_server.py`
+
+## Client Implementation
+
+MCP clients connect to servers using stdio, HTTP, or WebSocket.
+
+**See:** `@examples_client.py` for complete client examples.
+```
+
+### Best Practices for References
+
+1. **Be Specific:** Clearly state what each helper file contains
+2. **Provide Context:** Explain when to reference each file
+3. **List Contents:** Optionally list what patterns/examples are in each file
+4. **Use Descriptive Text:** Don't just say "see file" - explain why
+
+**Good Example:**
+
+```markdown
+## Complete Examples
+
+Complete, runnable examples are provided in separate files:
+
+- **`@examples_server.py`**: Server implementation examples
+  - Basic server with tools
+  - Server with resources
+  - Server with prompts
+  - Complete server with error handling
+
+- **`@examples_client.py`**: Client implementation examples
+  - Basic stdio client
+  - HTTP client
+  - Tool result parsing
+  - Complete client workflow
+
+- **`@examples_integration.py`**: Integration patterns
+  - Single server architecture
+  - Dynamic tool discovery
+  - Orchestration pattern
+  - Views/Profiles/Scopes implementation
+```
+
+**Bad Example:**
+
+```markdown
+See examples_server.py
+```
+
+## Helper File Content Guidelines
+
+### What to Include in Helper Files
+
+- ✅ **Complete, runnable code:** Helper files should contain working code
+- ✅ **Well-documented:** Include docstrings and comments
+- ✅ **Multiple examples:** Show different patterns and use cases
+- ✅ **Error handling:** Include proper error handling examples
+- ✅ **Type hints:** Use full type hints (following project standards)
+
+### What NOT to Include
+
+- ❌ **Guidance text:** Keep guidance in `RULE.mdc`, not in helper files
+- ❌ **Explanatory prose:** Helper files are for code, not documentation
+- ❌ **Incomplete snippets:** Each example should be complete and runnable
+
+### Example Helper File Structure
+
+```python
+# examples_server.py
+
+"""
+MCP Server Implementation Examples
+
+This file contains complete, runnable examples for implementing MCP servers.
+"""
+
+from mcp.server import Server
+from mcp.types import Tool, TextContent
+
+# Example 1: Basic Server with Tools
+def create_basic_server() -> Server:
+    """Create a basic MCP server with a single tool."""
+    server = Server("my-server")
+    
+    @server.list_tools()
+    async def list_tools() -> list[Tool]:
+        return [
+            Tool(
+                name="echo",
+                description="Echo a message",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "message": {"type": "string"}
+                    }
+                }
+            )
+        ]
+    
+    return server
+
+# Example 2: Server with Resources
+def create_server_with_resources() -> Server:
+    """Create an MCP server with resources."""
+    # ... implementation ...
+    pass
+
+# Example 3: Complete Server with Error Handling
+def create_complete_server() -> Server:
+    """Create a complete server with error handling and logging."""
+    # ... implementation ...
+    pass
+```
+
+## Rule File Structure with Helper Files
+
+### Recommended Rule Structure
+
+```markdown
+---
+description: "Standards and patterns for implementing X"
+alwaysApply: false
+---
+
+## Mandate
+
+[Brief mandate and overview]
+
+## Core Concepts
+
+[High-level concepts and standards]
+
+## Implementation Patterns
+
+### Pattern 1: Basic Implementation
+
+[Brief explanation]
+
+**See:** `@examples_basic.py` for complete basic implementation examples.
+
+### Pattern 2: Advanced Patterns
+
+[Brief explanation]
+
+**See:** `@examples_advanced.py` for advanced pattern examples.
+
+## Complete Examples
+
+Complete, runnable examples are provided in separate files:
+
+- **`@examples_basic.py`**: Basic implementation examples
+  - Pattern A
+  - Pattern B
+  
+- **`@examples_advanced.py`**: Advanced patterns
+  - Pattern C
+  - Pattern D
+
+## Best Practices
+
+[Guidance and standards]
+```
+
+## Splitting Large Rules
+
+### When to Split
+
+If your rule exceeds 400 lines even after extracting examples:
+
+1. **Split by Domain:** Break into multiple rules by functional domain
+2. **Split by Pattern:** Create separate rules for different patterns
+3. **Use Sub-Rules:** Create sub-rules in the same category
+
+### Example: Splitting a Large Rule
+
+**Before:** One large rule (600+ lines)
+```
+.cursor/rules/api/api-standards/
+  RULE.mdc (600 lines)
+```
+
+**After:** Split into focused rules
+```
+.cursor/rules/api/
+  api-documentation-standards/
+    RULE.mdc (200 lines)
+  api-error-handling/
+    RULE.mdc (180 lines)
+  api-authentication/
+    RULE.mdc (150 lines)
+```
+
+## Validation Checklist for Helper Files
+
+Before finalizing a rule with helper files, verify:
+
+- [ ] Helper files are in the same folder as `RULE.mdc`
+- [ ] Helper files use `examples_` prefix
+- [ ] Helper files have descriptive names
+- [ ] All helper files are referenced in `RULE.mdc` using `@filename` syntax
+- [ ] Each reference explains what the file contains
+- [ ] Helper files contain complete, runnable code
+- [ ] Helper files are well-documented with docstrings
+- [ ] `RULE.mdc` is under 400 lines
+- [ ] `RULE.mdc` focuses on guidance, not code
+- [ ] Code examples are in helper files, not inline (except very short ones)
+
+## Real-World Example
+
+**Location:** `.cursor/rules/api/mcp-protocol-implementation/`
+
+**Folder Structure:**
+```
+.cursor/rules/api/mcp-protocol-implementation/
+  RULE.mdc
+  examples_server.py
+  examples_client.py
+  examples_integration.py
+```
+
+**RULE.mdc (excerpt):**
+```markdown
+---
+description: "Standards and patterns for implementing Model Context Protocol (MCP) servers and clients"
+alwaysApply: false
+---
+
+## MCP Server Implementation
+
+### Server Setup
+
+Use the `mcp.server.Server` class to create an MCP server.
+
+**See:** `@examples_server.py` for complete server implementation examples.
+
+## Complete Examples
+
+Complete, runnable examples are provided in separate files:
+
+- **`@examples_server.py`**: Server implementation examples
+  - Basic server with tools
+  - Server with resources
+  - Complete server with error handling
+
+- **`@examples_client.py`**: Client implementation examples
+  - Basic stdio client
+  - HTTP client
+  - Complete client workflow
+```
+
+**Key Points:**
+- Rule stays focused on guidance and standards (~300 lines)
+- Code examples are in separate files
+- References use `@filename` syntax
+- Agent can read example files when needed
+- Rule remains maintainable and focused
+
+## Summary
+
+**Remember:**
+1. **Always prefer helper files** for code examples when rules exceed 300 lines
+2. **Use `@filename` syntax** to reference helper files
+3. **Keep `RULE.mdc` focused** on guidance, not code
+4. **Make helper files complete** and runnable
+5. **Document what each helper file contains** in the main rule
+
+This approach keeps your rules clean, maintainable, and focused on what matters: providing clear guidance and standards.

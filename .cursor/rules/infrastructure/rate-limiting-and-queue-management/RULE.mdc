@@ -1,0 +1,274 @@
+---
+description: "Rate limiting and queue management for multi-agent systems and API protection"
+alwaysApply: false
+---
+
+## Mandate
+
+All agentic systems **MUST** implement rate limiting and queue management to prevent API key exhaustion and handle parallel agent execution. In production systems, API calls fail due to rate limits. When working with dozens of agents in parallel, systems must use exponential backoff, queue management, and distributed rate limiting to avoid blocking API keys.
+
+## 1. Multi-Agent Rate Limiting
+
+### Parallel Agent Challenges
+
+* **Problem:** Multiple agents running in parallel can exhaust API rate limits quickly.
+
+* **Impact:**
+  * API key rate limit exceeded (429 errors)
+  * Service degradation or complete failure
+  * Cost overruns from failed retries
+  * Poor user experience
+
+* **Solution:** Implement per-agent and global rate limiting with queue management.
+
+### Per-Agent Rate Limiting
+
+* **Individual Limits:** Each agent must have its own rate limit allocation.
+
+* **Allocation Strategy:**
+  * **Equal Distribution:** Divide global limit equally among agents
+  * **Priority-Based:** Allocate more to high-priority agents
+  * **Dynamic Allocation:** Adjust allocation based on agent activity
+
+* **Tracking:** Track rate limit usage per agent to identify bottlenecks.
+
+**See:** `@examples_multi_agent_rate_limiting.py` for per-agent rate limiting implementation.
+
+### Global Rate Limiting
+
+* **Shared Pool:** Maintain a global rate limit pool shared across all agents.
+
+* **Pool Management:**
+  * **Token Bucket:** Use token bucket algorithm for global pool
+  * **Refill Rate:** Configure refill rate based on API provider limits
+  * **Burst Handling:** Allow controlled bursts while maintaining average rate
+
+* **Coordination:** Coordinate between agents to prevent exceeding global limits.
+
+**See:** `@examples_multi_agent_rate_limiting.py` for global rate limiting coordination.
+
+## 2. Queue Management
+
+### Request Queuing
+
+* **Mandate:** When rate limits are approached, queue requests instead of failing immediately.
+
+* **Queue Types:**
+  * **FIFO Queue:** First-in-first-out for fair processing
+  * **Priority Queue:** Priority-based for urgent requests
+  * **Weighted Queue:** Weight-based for different request types
+
+* **Queue Implementation:**
+  * **In-Memory:** For single-instance deployments
+  * **Redis Queue:** For distributed systems (recommended)
+  * **Message Broker:** For large-scale systems (RabbitMQ, Kafka)
+
+**See:** `@examples_queue_management.py` for queue implementation patterns.
+
+### Queue Management Strategies
+
+* **Queue Size Limits:**
+  * Set maximum queue size to prevent memory issues
+  * Reject new requests when queue is full
+  * Provide clear error messages for queue full scenarios
+
+* **Queue Processing:**
+  * Process queue at controlled rate (respecting rate limits)
+  * Batch processing for efficiency
+  * Parallel processing when allowed by rate limits
+
+* **Queue Monitoring:**
+  * Track queue size and processing rate
+  * Alert when queue size exceeds thresholds
+  * Monitor queue processing latency
+
+### Priority Queues
+
+* **Priority Levels:**
+  * **High:** Critical user requests, time-sensitive operations
+  * **Medium:** Standard agent operations
+  * **Low:** Background tasks, non-urgent operations
+
+* **Priority Assignment:**
+  * Assign priority based on request type
+  * User-initiated requests get higher priority
+  * Background tasks get lower priority
+
+* **Processing Order:**
+  * Process high-priority requests first
+  * Maintain fairness within priority levels
+  * Prevent starvation of lower-priority requests
+
+## 3. API Key Protection
+
+### Key Exhaustion Prevention
+
+* **Mandate:** Prevent API key exhaustion through intelligent request management.
+
+* **Protection Strategies:**
+  * **Rate Limit Tracking:** Track usage per API key in real-time
+  * **Key Rotation:** Rotate keys when approaching limits
+  * **Key Pooling:** Use multiple keys and distribute load
+  * **Request Throttling:** Throttle requests before hitting limits
+
+**See:** `@examples_api_key_protection.py` for API key management and protection patterns.
+
+### Multi-Key Management
+
+* **Key Pool:**
+  * Maintain pool of API keys
+  * Distribute requests across keys
+  * Load balance based on key usage
+
+* **Key Health:**
+  * Monitor key health (success rate, error rate)
+  * Automatically exclude unhealthy keys
+  * Rotate keys on failure or exhaustion
+
+* **Key Allocation:**
+  * Allocate keys to agents based on priority
+  * Reserve keys for critical operations
+  * Dynamic key allocation based on load
+
+### Key Rotation
+
+* **Rotation Triggers:**
+  * Approaching rate limit (e.g., 80% of limit)
+  * Key failure or errors
+  * Scheduled rotation (e.g., daily)
+
+* **Rotation Process:**
+  1. Acquire new key from key pool
+  2. Gradually migrate traffic to new key
+  3. Monitor old key until traffic stops
+  4. Retire old key
+
+* **Zero-Downtime:** Ensure rotation doesn't cause service interruption.
+
+## 4. Exponential Backoff for Multi-Agent Systems
+
+### Advanced Backoff Strategies
+
+* **Per-Agent Backoff:** Each agent maintains its own backoff state.
+
+* **Backoff Coordination:**
+  * **Independent:** Each agent backs off independently (simple)
+  * **Coordinated:** Agents coordinate backoff to avoid thundering herd
+  * **Adaptive:** Adjust backoff based on system-wide conditions
+
+* **Backoff Parameters:**
+  * **Base Delay:** Initial delay (e.g., 1 second)
+  * **Max Delay:** Maximum delay cap (e.g., 60 seconds)
+  * **Exponent:** Backoff multiplier (e.g., 2 for exponential)
+  * **Jitter:** Randomness to prevent synchronization
+
+**See:** `error-handling-and-resilience.md` for basic exponential backoff patterns.
+
+### Distributed Backoff
+
+* **Redis-Based Backoff:** Use Redis to coordinate backoff across instances.
+
+* **Backoff State:**
+  * Store backoff state in Redis
+  * Coordinate between multiple agent instances
+  * Prevent duplicate retries
+
+* **Backoff Algorithms:**
+  * **Exponential:** Standard exponential backoff
+  * **Linear:** Linear backoff for predictable delays
+  * **Polynomial:** Polynomial backoff for aggressive backoff
+
+## 5. Distributed Rate Limiting
+
+### Redis-Based Rate Limiting
+
+* **Mandate:** Use Redis for distributed rate limiting in multi-instance deployments.
+
+* **Redis Patterns:**
+  * **Token Bucket:** Implement token bucket in Redis
+  * **Sliding Window:** Use sliding window for rate limiting
+  * **Fixed Window:** Simple fixed window for basic limiting
+
+* **Redis Keys:**
+  * Use namespaced keys (e.g., `rate_limit:agent:{agent_id}`)
+  * Set TTL for automatic cleanup
+  * Use atomic operations for consistency
+
+**See:** `@examples_multi_agent_rate_limiting.py` for Redis-based rate limiting.
+
+### Rate Limit Coordination
+
+* **Cross-Instance Coordination:**
+  * Share rate limit state via Redis
+  * Coordinate between multiple agent instances
+  * Prevent exceeding global limits
+
+* **Consistency:**
+  * Use Redis transactions for atomic operations
+  * Handle Redis failures gracefully
+  * Fallback to local rate limiting if Redis unavailable
+
+## 6. Integration Points
+
+### Error Handling Integration
+
+* **Rate Limit Errors:** Handle 429 (Too Many Requests) errors with backoff and queuing.
+
+* **Error Classification:**
+  * **Transient:** Rate limit errors are transient (retry with backoff)
+  * **Permanent:** Authentication errors are permanent (don't retry)
+
+* **See:** `error-handling-and-resilience.md` for error handling patterns.
+
+### API Interface Integration
+
+* **Rate Limit Headers:** Parse and respect rate limit headers from API responses.
+
+* **Header Parsing:**
+  * `X-RateLimit-Limit`: Maximum requests allowed
+  * `X-RateLimit-Remaining`: Remaining requests
+  * `X-RateLimit-Reset`: When limit resets
+  * `Retry-After`: Seconds to wait before retry
+
+* **See:** `api-interface-and-streaming.md` for API interface patterns.
+
+### Monitoring Integration
+
+* **Rate Limit Metrics:**
+  * Rate limit usage per agent
+  * Queue size and processing rate
+  * API key usage and health
+  * Backoff frequency and duration
+
+* **Alerting:**
+  * Alert when approaching rate limits
+  * Alert when queue size exceeds threshold
+  * Alert on API key exhaustion
+
+* **See:** `monitoring-and-observability.md` for monitoring patterns.
+
+## 7. Best Practices
+
+### Rate Limit Configuration
+
+* **Conservative Limits:** Set conservative limits below API provider limits (e.g., 90% of limit).
+
+* **Buffer Management:** Maintain buffer (e.g., 10% of limit) for bursts and errors.
+
+* **Dynamic Adjustment:** Adjust limits based on API provider feedback and usage patterns.
+
+### Queue Management
+
+* **Size Limits:** Set reasonable queue size limits to prevent memory issues.
+
+* **Timeout Handling:** Set timeouts for queued requests to prevent indefinite waiting.
+
+* **Dead Letter Queue:** Move failed requests to DLQ after max retries.
+
+### API Key Management
+
+* **Key Rotation:** Implement regular key rotation to prevent exhaustion.
+
+* **Key Monitoring:** Monitor key usage and health continuously.
+
+* **Key Isolation:** Isolate keys by environment (dev, staging, prod) and purpose.

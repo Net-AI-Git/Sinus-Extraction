@@ -1,0 +1,197 @@
+---
+description: "CI/CD, Docker, Kubernetes, and infrastructure deployment standards"
+alwaysApply: false
+---
+
+## 1. CI/CD Pipeline Standards
+
+* **Pipeline Stages:**
+    * **Lint:** Run code linters (ruff, black, mypy).
+    * **Test:** Run unit tests and integration tests.
+    * **Build:** Build Docker images.
+    * **Security Scan:** Scan for vulnerabilities (Snyk, Trivy).
+    * **Deploy Staging:** Deploy to staging environment.
+    * **E2E Tests:** Run end-to-end tests in staging.
+    * **Deploy Production:** Deploy to production (manual approval required).
+
+* **Mandate:** All code changes must pass through CI/CD pipeline. No direct production deployments.
+
+* **Fast Feedback:** Fail fast on early stages (lint, test) to provide quick feedback to developers.
+
+* **Parallel Execution:** Run independent stages in parallel to reduce pipeline duration.
+
+* **Artifact Management:** Store build artifacts (Docker images, packages) in a registry with versioning.
+
+## 2. Containerization (Docker Best Practices)
+
+* **Multi-Stage Builds:** Use multi-stage builds to reduce image size.
+    * **Build Stage:** Install build dependencies and compile code.
+    * **Runtime Stage:** Copy only necessary files to minimal base image.
+
+* **Base Images:**
+    * **Use Official Images:** Prefer official Python images from Docker Hub.
+    * **Pin Versions:** Pin specific image versions (e.g., `python:3.11-slim`) instead of `latest`.
+    * **Minimal Images:** Use `-slim` or `-alpine` variants to reduce image size.
+
+* **Layer Optimization:**
+    * **Order Matters:** Copy dependency files (`requirements.txt`) before source code to leverage Docker cache.
+    * **Combine RUN Commands:** Combine multiple `RUN` commands to reduce layers.
+    * **Clean Up:** Remove package managers and cache in the same layer.
+
+* **Security:**
+    * **Non-Root User:** Run containers as non-root user.
+    * **Secrets:** Never embed secrets in Docker images. Use environment variables or secret management.
+    * **Scan Images:** Regularly scan images for vulnerabilities.
+
+* **Example Structure:**
+```dockerfile
+FROM python:3.11-slim as builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=builder /root/.local /root/.local
+COPY . .
+ENV PATH=/root/.local/bin:$PATH
+USER 1000
+CMD ["python", "main.py"]
+```
+
+## 3. Orchestration (Kubernetes Patterns)
+
+* **Deployment Resources:**
+    * **Replicas:** Configure appropriate replica count for high availability.
+    * **Resource Limits:** Set CPU and memory limits and requests.
+    * **Health Checks:** Configure liveness and readiness probes.
+
+**See:** `@examples_kubernetes.py` for Kubernetes Deployment and Service resource patterns.
+
+* **Service Discovery:**
+    * **Service Resources:** Use Kubernetes Services for internal service discovery.
+    * **DNS:** Services are accessible via DNS names (e.g., `service-name.namespace.svc.cluster.local`).
+
+* **ConfigMaps & Secrets:**
+    * **ConfigMaps:** Store non-sensitive configuration.
+    * **Secrets:** Store sensitive data (API keys, passwords). Use Kubernetes Secrets or external secret management.
+
+* **Horizontal Pod Autoscaling (HPA):**
+    * **Metrics:** Scale based on CPU, memory, or custom metrics.
+    * **Min/Max Replicas:** Define minimum and maximum replica counts.
+
+* **Rolling Updates:**
+    * **Strategy:** Use RollingUpdate strategy for zero-downtime deployments.
+    * **Max Surge/Unavailable:** Configure how many pods can be created/terminated during updates.
+
+## 4. Environment Promotion
+
+* **Environment Hierarchy:**
+    * **Development:** Local development and feature testing.
+    * **Staging:** Pre-production environment matching production configuration.
+    * **Production:** Live environment serving real users.
+
+* **Promotion Process:**
+    * **Automated Promotion:** Automatically promote to staging after successful CI/CD.
+    * **Manual Approval:** Require manual approval for production deployments.
+    * **Smoke Tests:** Run smoke tests after each promotion.
+
+* **Configuration Management:**
+    * **Environment-Specific Configs:** Use separate configuration files or environment variables per environment.
+    * **No Hardcoding:** Never hardcode environment-specific values in code.
+
+* **Database Migrations:**
+    * **Run Migrations:** Execute database migrations as part of deployment process.
+    * **Rollback Plan:** Have a rollback plan for failed migrations.
+
+## 5. Blue-Green Deployments
+
+* **Concept:** Maintain two identical production environments (blue and green).
+    * **Active Environment:** One environment serves live traffic.
+    * **Inactive Environment:** The other environment is updated with new version.
+
+* **Deployment Process:**
+    1. Deploy new version to inactive environment.
+    2. Run health checks and smoke tests.
+    3. Switch traffic from active to inactive environment.
+    4. Monitor for issues.
+    5. Keep previous environment as backup for quick rollback.
+
+**See:** `@examples_blue_green.py` for blue-green deployment traffic switching pattern.
+
+* **Benefits:**
+    * **Zero Downtime:** No downtime during deployments.
+    * **Quick Rollback:** Instant rollback by switching traffic back.
+    * **Testing:** Test new version in production-like environment before switching.
+
+* **Implementation:** Use load balancer or service mesh to route traffic between environments.
+
+## 6. Rollback Procedures
+
+* **Automated Rollback:**
+    * **Health Check Failures:** Automatically rollback if health checks fail after deployment.
+    * **Error Rate Threshold:** Rollback if error rate exceeds threshold.
+    * **Latency Threshold:** Rollback if latency exceeds acceptable limits.
+
+* **Manual Rollback:**
+    * **Process:** Document clear rollback procedure.
+    * **Access:** Ensure team has access to rollback tools and permissions.
+    * **Communication:** Notify stakeholders before and after rollback.
+
+* **Rollback Strategies:**
+    * **Image Rollback:** Revert to previous Docker image version.
+    * **Code Rollback:** Revert Git commit and redeploy.
+    * **Database Rollback:** Rollback database migrations if needed (see `data-migration-and-compatibility.md`).
+
+* **Post-Rollback:**
+    * **Investigation:** Investigate root cause of deployment failure.
+    * **Documentation:** Document the incident and lessons learned.
+    * **Prevention:** Update processes to prevent similar issues.
+
+## 7. Infrastructure as Code (IaC)
+
+* **Terraform:**
+    * **State Management:** Use remote state (S3, Terraform Cloud) for team collaboration.
+    * **Modules:** Create reusable modules for common infrastructure patterns.
+    * **Versioning:** Version Terraform modules and pin provider versions.
+
+* **Pulumi:**
+    * **Language Support:** Use Python for infrastructure definitions (consistent with application code).
+    * **Type Safety:** Leverage type checking for infrastructure code.
+
+* **Best Practices:**
+    * **Version Control:** Store IaC code in version control (Git).
+    * **Review Process:** Require code review for infrastructure changes.
+    * **Testing:** Test infrastructure changes in staging before production.
+    * **Documentation:** Document infrastructure architecture and dependencies.
+
+* **Resource Tagging:**
+    * **Mandatory Tags:** Tag all resources with: environment, project, owner, cost-center.
+    * **Automation:** Use tags for cost allocation and resource management.
+
+## 8. Scaling Strategies
+
+* **Horizontal Scaling:**
+    * **Add Instances:** Scale by adding more instances/pods.
+    * **Load Balancing:** Distribute traffic across instances using load balancer.
+    * **Stateless Design:** Ensure application is stateless to enable horizontal scaling.
+
+* **Vertical Scaling:**
+    * **Increase Resources:** Scale by increasing CPU/memory of instances.
+    * **Limitations:** Limited by instance size and cost.
+
+* **Auto-Scaling:**
+    * **Metrics-Based:** Scale based on CPU, memory, request rate, or custom metrics.
+    * **Predictive Scaling:** Use predictive algorithms to scale before load increases.
+    * **Scheduled Scaling:** Scale based on known patterns (e.g., business hours).
+
+* **Database Scaling:**
+    * **Read Replicas:** Use read replicas for read-heavy workloads.
+    * **Sharding:** Partition data across multiple databases for write scaling.
+    * **Connection Pooling:** Use connection pooling to manage database connections efficiently.
+
+* **Caching:**
+    * **Application Cache:** Use in-memory cache (Redis) to reduce database load.
+    * **CDN:** Use CDN for static assets and API responses when applicable.
+
+* **See:** `performance-optimization.md` for detailed performance optimization strategies.

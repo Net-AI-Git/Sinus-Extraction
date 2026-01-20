@@ -1,0 +1,320 @@
+---
+alwaysApply: false
+---
+
+# Frontmatter Reference Guide
+
+This file contains complete frontmatter specifications for all rule types. Reference this file when creating or updating rules.
+
+**See:** `@rules-management` for the main rules management guide.
+
+## Rule Types Overview
+
+There are 4 types of rules, each with different frontmatter requirements:
+
+1. **Always Apply** - Applied to every chat session automatically
+2. **Apply Intelligently** - Applied when Agent decides it's relevant based on description
+3. **Apply to Specific Files** - Applied when working on files matching specified patterns
+4. **Apply Manually** - Applied only when @-mentioned in chat
+
+## Type 1: Always Apply
+
+Applied to every chat session automatically.
+
+### Frontmatter Structure
+
+```yaml
+---
+alwaysApply: true
+---
+```
+
+### Detailed Instructions
+
+1. **Start with `---` on the first line** (no content before it)
+2. **Add `alwaysApply: true`** on the second line
+   - Use lowercase `true` (not `True` or `TRUE`)
+   - No quotes around `true`
+   - Exactly one space after the colon: `alwaysApply: true`
+3. **End with `---` on the third line** (exactly 3 dashes)
+4. **Add one blank line** after the closing `---` before content starts
+
+### Required Fields
+
+- ✅ `alwaysApply: true` (required)
+- ❌ `description` (MUST NOT be present)
+- ❌ `globs` (MUST NOT be present)
+
+### Common Mistakes to Avoid
+
+- ❌ `alwaysApply: True` (use lowercase `true`)
+- ❌ `alwaysApply: "true"` (no quotes)
+- ❌ Adding `description` field
+- ❌ Adding `globs` field
+- ❌ Missing blank line after `---`
+
+### Complete Example
+
+```markdown
+---
+alwaysApply: true
+---
+
+## Core Python Standards
+
+All Python code must follow these standards...
+```
+
+### Use When
+
+The rule should always be active (e.g., core coding standards, security requirements).
+
+## Type 2: Apply Intelligently
+
+Applied when Agent decides it's relevant based on the description.
+
+### Frontmatter Structure
+
+```yaml
+---
+description: "Clear description of what this rule covers"
+alwaysApply: false
+---
+```
+
+### Detailed Instructions
+
+1. **Start with `---` on the first line** (no content before it)
+2. **Add `description:` field** on the second line
+   - The value **MUST** be in double quotes: `"description text"`
+   - Description should be clear and concise (1-2 sentences)
+   - Description is used by Agent to decide if rule is relevant
+3. **Add `alwaysApply: false`** on the third line
+   - Use lowercase `false` (not `False` or `FALSE`)
+   - No quotes around `false`
+4. **End with `---` on the fourth line** (exactly 3 dashes)
+5. **Add one blank line** after the closing `---` before content starts
+
+### Required Fields
+
+- ✅ `description: "..."` (required - must be in double quotes)
+- ✅ `alwaysApply: false` (required)
+- ❌ `globs` (MUST NOT be present)
+
+### Field Order
+
+- `description` must come before `alwaysApply`
+- Both fields are required
+
+### Common Mistakes to Avoid
+
+- ❌ `description: text without quotes` (must use double quotes)
+- ❌ `description: 'single quotes'` (must use double quotes)
+- ❌ Missing `description` field
+- ❌ Adding `globs` field
+- ❌ `alwaysApply: False` (use lowercase `false`)
+- ❌ Wrong field order
+
+### Complete Example
+
+```markdown
+---
+description: "Standards for CI/CD, Docker, Kubernetes, and infrastructure deployment"
+alwaysApply: false
+---
+
+## Deployment Standards
+
+When working on deployment...
+```
+
+### Use When
+
+The rule is relevant in specific contexts but not always needed (e.g., deployment standards, monitoring practices).
+
+## Type 3: Apply to Specific Files
+
+Applied when working on files matching specified patterns.
+
+### Frontmatter Structure
+
+```yaml
+---
+globs: **/api/**/*.py, **/routes/**/*.py
+alwaysApply: false
+---
+```
+
+### Detailed Instructions
+
+1. **Start with `---` on the first line** (no content before it)
+2. **Add `globs:` field** on the second line
+   - Use colon after `globs`: `globs:`
+   - The value is a string with patterns separated by commas
+   - Patterns use glob syntax (e.g., `**/api/**/*.py`)
+   - Multiple patterns are separated by commas and spaces: `pattern1, pattern2, pattern3`
+3. **Add `alwaysApply: false`** on the third line
+   - Use lowercase `false`
+   - No quotes around `false`
+4. **End with `---` on a new line** (exactly 3 dashes)
+5. **Add one blank line** after the closing `---` before content starts
+
+### Required Fields
+
+- ✅ `globs:` (required - must be a string with comma-separated patterns)
+  - At least one pattern required
+  - Multiple patterns separated by commas and spaces
+  - No quotes around the entire value
+- ✅ `alwaysApply: false` (required)
+- ❌ `description` (MUST NOT be present)
+
+### Field Order
+
+- `globs` must come before `alwaysApply`
+- Both fields are required
+
+### Glob Pattern Syntax
+
+- `**/` matches any directory at any depth
+- `*.ext` matches files with extension
+- Patterns are case-sensitive
+- Use forward slashes `/` even on Windows
+- Multiple patterns separated by commas: `pattern1, pattern2, pattern3`
+
+### Common Mistakes to Avoid
+
+- ❌ `globs:` with array format (must be string, not array)
+- ❌ `globs: "pattern"` (no quotes around the value)
+- ❌ Missing commas between patterns
+- ❌ Missing `alwaysApply: false`
+- ❌ Adding `description` field
+- ❌ Using backslashes `\` instead of forward slashes `/`
+
+### Complete Example
+
+```markdown
+---
+globs: **/tests/**/*.py, **/test_*.py
+alwaysApply: false
+---
+
+## Testing Standards
+
+When writing test files...
+```
+
+### Use When
+
+The rule is only relevant for specific file types or locations (e.g., API endpoints, test files, migrations).
+
+## Type 4: Apply Manually
+
+Applied only when @-mentioned in chat (e.g., `@rule-name`).
+
+### Frontmatter Structure
+
+```yaml
+---
+alwaysApply: false
+---
+```
+
+### Detailed Instructions
+
+1. **Start with `---` on the first line** (no content before it)
+2. **Add `alwaysApply: false`** on the second line
+   - Use lowercase `false` (not `False` or `FALSE`)
+   - No quotes around `false`
+   - Exactly one space after the colon: `alwaysApply: false`
+3. **End with `---` on the third line** (exactly 3 dashes)
+4. **Add one blank line** after the closing `---` before content starts
+
+### Required Fields
+
+- ✅ `alwaysApply: false` (required)
+- ❌ `description` (MUST NOT be present)
+- ❌ `globs` (MUST NOT be present)
+
+### Common Mistakes to Avoid
+
+- ❌ `alwaysApply: False` (use lowercase `false`)
+- ❌ `alwaysApply: "false"` (no quotes)
+- ❌ Adding `description` field
+- ❌ Adding `globs` field
+- ❌ Missing blank line after `---`
+
+### Complete Example
+
+```markdown
+---
+alwaysApply: false
+---
+
+## Special Audit Protocol
+
+This rule is applied manually when needed...
+```
+
+### Use When
+
+The rule is rarely needed and should only be applied on demand (e.g., audit protocols, special review procedures, meta-rules).
+
+## Quick Reference Templates
+
+### Always Apply
+
+```yaml
+---
+alwaysApply: true
+---
+```
+
+**Key Points:**
+- Only one field: `alwaysApply: true`
+- Use lowercase `true`, no quotes
+- No `description`, no `globs`
+
+### Apply Intelligently
+
+```yaml
+---
+description: "Your rule description here"
+alwaysApply: false
+---
+```
+
+**Key Points:**
+- Two fields: `description` and `alwaysApply`
+- `description` must be in double quotes
+- `description` comes first, then `alwaysApply: false`
+- No `globs` field
+
+### Apply to Specific Files
+
+```yaml
+---
+globs: **/pattern1/**/*.ext, **/pattern2/**/*.ext
+alwaysApply: false
+---
+```
+
+**Key Points:**
+- Two fields: `globs` (string) and `alwaysApply`
+- `globs` is a string with comma-separated patterns, not an array
+- Multiple patterns separated by commas and spaces
+- No quotes around the entire value
+- `globs` comes first, then `alwaysApply: false`
+- No `description` field
+
+### Apply Manually
+
+```yaml
+---
+alwaysApply: false
+---
+```
+
+**Key Points:**
+- Only one field: `alwaysApply: false`
+- Use lowercase `false`, no quotes
+- No `description`, no `globs`

@@ -1,0 +1,493 @@
+---
+description: "Standards and patterns for implementing Model Context Protocol (MCP) servers and clients for dynamic tool management"
+alwaysApply: false
+---
+
+## Mandate
+
+All tool implementations for agents **MUST** use the Model Context Protocol (MCP). Use a single MCP server architecture with Views/Profiles/Scopes to provide different tool sets to different agents. Tools must be discovered dynamically at runtime - never hardcode tool dependencies in agents or prompts.
+
+## MCP Fundamentals
+
+### What is MCP?
+
+Model Context Protocol (MCP) is an open protocol that enables seamless integration between Large Language Model (LLM) applications and external data sources and tools. It provides a standardized way to connect LLMs with the context they need.
+
+### Core Primitives
+
+MCP defines three core primitives that servers can implement:
+
+| Primitive | Control | Description | Example Use |
+|-----------|---------|-------------|-------------|
+| **Tools** | Model-controlled | Functions exposed to the LLM to take actions | API calls, data updates, file operations |
+| **Resources** | Application-controlled | Contextual data managed by the client application | File contents, API responses, configuration |
+| **Prompts** | User-controlled | Interactive templates invoked by user choice | Slash commands, menu options, templates |
+
+### Protocol Basics
+
+- **Transport**: JSON-RPC 2.0 over stdio, HTTP (SSE/Streamable), or WebSocket
+- **Communication**: Request-response pattern with notifications
+- **Schema**: JSON Schema for tool inputs and outputs
+- **Capabilities**: Servers declare capabilities during initialization
+
+### Server Capabilities
+
+MCP servers declare capabilities during initialization:
+
+| Capability | Feature Flag | Description |
+|------------|---------------|-------------|
+| `prompts` | `listChanged` | Prompt template management |
+| `resources` | `subscribeListChanged` | Resource exposure and updates |
+| `tools` | `listChanged` | Tool discovery and execution |
+| `logging` | - | Server logging configuration |
+| `completions` | - | Argument completion suggestions |
+
+## MCP Server Implementation
+
+### Server Setup
+
+Use the `mcp.server.Server` class to create an MCP server:
+
+```python
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+
+server = Server("my-server-name")
+```
+
+### Tool Registration
+
+Register tools using decorators:
+
+```python
+@server.list_tools()
+async def list_tools() -> list[Tool]:
+    """List available tools."""
+    return [
+        Tool(
+            name="tool_name",
+            description="Tool description",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "param": {"type": "string", "description": "Parameter description"}
+                },
+                "required": ["param"]
+            }
+        )
+    ]
+
+@server.call_tool()
+async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+    """Handle tool calls."""
+    if name == "tool_name":
+        # Implement tool logic
+        return [TextContent(type="text", text="Result")]
+    raise ValueError(f"Unknown tool: {name}")
+```
+
+**See:** `@examples_server.py` for complete server examples.
+
+### Resource Management
+
+Expose resources for client access:
+
+```python
+@server.list_resources()
+async def list_resources() -> list[Resource]:
+    """List available resources."""
+    return [
+        Resource(
+            uri="resource://path",
+            name="Resource Name",
+            description="Resource description",
+            mimeType="application/json"
+        )
+    ]
+
+@server.read_resource()
+async def read_resource(uri: str) -> str:
+    """Read a resource by URI."""
+    # Implement resource reading logic
+    return resource_content
+```
+
+### Prompt Templates
+
+Define prompt templates for user interaction:
+
+```python
+@server.list_prompts()
+async def list_prompts() -> list[Prompt]:
+    """List available prompt templates."""
+    return [
+        Prompt(
+            name="prompt_name",
+            description="Prompt description",
+            arguments=[
+                PromptArgument(
+                    name="arg_name",
+                    description="Argument description",
+                    required=True
+                )
+            ]
+        )
+    ]
+
+@server.get_prompt()
+async def get_prompt(name: str, arguments: dict[str, str]) -> PromptMessage:
+    """Get a prompt template with arguments filled in."""
+    # Implement prompt generation
+    return PromptMessage(role="user", content=...)
+```
+
+### Views/Profiles/Scopes Pattern
+
+Implement agent-specific tool filtering using Views/Profiles/Scopes:
+
+**Key Principles:**
+- **Single Server**: One MCP server serves all agents
+- **Tool Metadata**: Add metadata to tools indicating which agents/scopes can access them
+- **Filtering**: Filter tools based on agent profile and requested scopes
+- **Dynamic Discovery**: Agents discover their available tools at runtime
+
+**Implementation:**
+1. Add scope/profile metadata to tools (via annotations or custom fields)
+2. Filter tools in `list_tools()` based on agent profile/scope
+3. Clients request tools with profile/scope parameters
+4. Server returns filtered tool list
+
+**See:** `@examples_integration.py` for complete Views/Profiles/Scopes implementation.
+
+### Error Handling
+
+Always implement proper error handling:
+
+```python
+@server.call_tool()
+async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[TextContent | ImageContent | EmbeddedResource]:
+    """Handle tool calls with error handling."""
+    try:
+        if name == "tool_name":
+            # Tool logic
+            return [TextContent(type="text", text="Success")]
+        raise ValueError(f"Unknown tool: {name}")
+    except Exception as e:
+        logger.error(f"Error calling tool {name}: {e}")
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+```
+
+## MCP Client Implementation
+
+### Client Setup
+
+#### Stdio Client (Local)
+
+For local MCP servers:
+
+```python
+from mcp.client.stdio import stdio_client, StdioServerParameters
+from mcp import ClientSession
+
+server_params = StdioServerParameters(
+    command="python",
+    args=["path/to/mcp_server.py"]
+)
+
+async with stdio_client(server_params) as (read, write):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+        # Use session...
+```
+
+#### HTTP Client (Remote)
+
+For remote MCP servers:
+
+```python
+from mcp.client.streamable_http import streamable_http_client
+
+async with streamable_http_client("http://localhost:8000/mcp") as (read, write, _):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+        # Use session...
+```
+
+#### OAuth Client (Authenticated)
+
+For protected MCP servers:
+
+```python
+from mcp.client.auth import OAuthClientProvider
+
+oauth_auth = OAuthClientProvider(
+    server_url="http://localhost:8001",
+    client_metadata=OAuthClientMetadata(...),
+    storage=TokenStorage(...),
+    redirect_handler=handle_redirect,
+    callback_handler=handle_callback,
+)
+
+async with httpx.AsyncClient(auth=oauth_auth) as http_client:
+    async with streamable_http_client("http://localhost:8001/mcp", http_client=http_client) as (read, write, _):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            # Use session...
+```
+
+**See:** `@examples_client.py` for complete client examples.
+
+### Tool Discovery
+
+Discover available tools dynamically:
+
+```python
+tools_response = await session.list_tools()
+available_tools = tools_response.tools
+
+for tool in available_tools:
+    print(f"Tool: {tool.name} - {tool.description}")
+```
+
+### Tool Execution
+
+Execute tools and parse results:
+
+```python
+result = await session.call_tool("tool_name", {"param": "value"})
+
+# Parse different content types
+for content in result.content:
+    if isinstance(content, types.TextContent):
+        print(f"Text: {content.text}")
+    elif isinstance(content, types.ImageContent):
+        print(f"Image: {content.mimeType}, {len(content.data)} bytes")
+    elif isinstance(content, types.EmbeddedResource):
+        resource = content.resource
+        if isinstance(resource, types.TextResourceContents):
+            print(f"Resource: {resource.text}")
+```
+
+### Resource Access
+
+Access resources exposed by the server:
+
+```python
+resources_response = await session.list_resources()
+for resource in resources_response.resources:
+    print(f"Resource: {resource.uri}")
+
+# Read a resource
+resource_content = await session.read_resource("resource://path")
+```
+
+### Display Utilities
+
+Use proper display name precedence:
+
+- **For tools**: `title` > `annotations.title` > `name`
+- **For other objects**: `title` > `name`
+
+**See:** `@examples_client.py` for display utility implementation.
+
+## Integration Patterns
+
+### Single MCP Server Architecture
+
+**Mandate**: Use **one MCP server** for all agents. Do not create multiple servers.
+
+**Benefits:**
+- Centralized tool management
+- Consistent tool interfaces
+- Easier maintenance and updates
+- Single point of configuration
+
+**Implementation:**
+1. Create one MCP server with all tools
+2. Categorize tools by scope/profile
+3. Filter tools per agent request
+4. Use orchestrator pattern for client management
+
+**See:** `@examples_integration.py` for single server architecture.
+
+### Agent-Specific Tool Filtering
+
+**Views/Profiles/Scopes Pattern:**
+
+1. **Profiles**: Agent type (e.g., `data_agent`, `communication_agent`)
+2. **Scopes**: Permission sets (e.g., `file_operations`, `data_access`)
+3. **Views**: Agent's filtered view of available tools
+
+**Implementation Steps:**
+1. Define agent profiles and tool scopes
+2. Add metadata to tools indicating allowed profiles/scopes
+3. Filter tools in `list_tools()` based on agent profile
+4. Agents discover tools dynamically at runtime
+
+**See:** `@examples_integration.py` for complete filtering implementation.
+
+### Dynamic Tool Discovery
+
+**Mandate**: Agents **MUST** discover tools at runtime. Never hardcode tool dependencies.
+
+**Why:**
+- Tools may change without agent code changes
+- Different agents see different tools
+- Enables flexible tool management
+- Supports runtime tool updates
+
+**Implementation:**
+1. Agent connects to MCP server
+2. Agent calls `list_tools()` with profile/scope
+3. Agent caches available tools
+4. Agent uses tools dynamically based on discovery
+
+**See:** `@examples_integration.py` for dynamic discovery pattern.
+
+### Prompt Design for Dynamic Tools
+
+**Key Requirements:**
+
+Prompts **MUST NOT** hardcode tool names. Instead, include:
+
+1. **Tool Descriptions**: List discovered tools with descriptions
+2. **Usage Guidelines**: How to use tools appropriately
+3. **Legitimate Actions**: What tools can be used for
+4. **Restrictions**: When NOT to use tools
+5. **Thinking Order**: Preferred decision-making process
+
+**Example Prompt Structure:**
+
+```
+You have access to the following tools:
+[Tool descriptions from discovery]
+
+## Tool Usage Guidelines
+- Goal: [What the agent should accomplish]
+- Legitimate Actions: [What tools can be used for]
+- When NOT to Use Tools: [Restrictions]
+- Preferred Thinking Order: [Decision process]
+```
+
+**See:** `@examples_integration.py` for prompt generation examples.
+
+### Orchestration Pattern
+
+Use an orchestrator layer between agents and MCP client:
+
+**Benefits:**
+- Centralized connection management
+- Tool caching and discovery
+- Error handling and retries
+- Profile/scope management
+
+**Components:**
+1. **MCPOrchestrator**: Manages MCP client connection
+2. **DynamicToolAgent**: Agent with dynamic tool discovery
+3. **AgentView**: Agent's filtered view of tools
+
+**See:** `@examples_integration.py` for complete orchestration pattern.
+
+## Best Practices
+
+### Tool Schema Design
+
+- **Use JSON Schema**: Define clear input schemas for all tools
+- **Field Descriptions**: Every field MUST have a description
+- **Required Fields**: Mark required fields explicitly
+- **Type Validation**: Use proper JSON Schema types
+- **Examples**: Include examples in schema when helpful
+
+**See:** `@data-schemas-and-interfaces` for Pydantic schema standards.
+
+### Error Handling
+
+- **Classify Errors**: Distinguish transient vs permanent errors
+- **Retry Logic**: Implement retries for transient errors with exponential backoff
+- **Error Messages**: Provide clear, actionable error messages
+- **Logging**: Log all errors with full context
+
+**See:** `@error-handling-and-resilience` for comprehensive error handling patterns.
+
+### Security Considerations
+
+- **Input Validation**: Validate all tool inputs
+- **Authentication**: Use OAuth for protected servers
+- **Token Storage**: Store tokens securely (encrypted, not in code)
+- **Scope Restrictions**: Enforce scope-based access control
+- **Audit Logging**: Log all tool calls for audit trails
+
+**See:** `@security-governance-and-observability` for security standards.
+
+### Performance Optimization
+
+- **Connection Pooling**: Reuse MCP client connections
+- **Tool Caching**: Cache discovered tools to avoid repeated discovery
+- **Async Operations**: Use async/await for all I/O operations
+- **Parallel Execution**: Use `asyncio.gather()` for independent tool calls
+
+**See:** `@performance-optimization` for performance strategies.
+
+### Testing Strategies
+
+- **Unit Tests**: Test tool handlers independently
+- **Integration Tests**: Test client-server communication
+- **Mock Servers**: Use mock MCP servers for testing
+- **Error Scenarios**: Test error handling and edge cases
+
+## Code Examples
+
+Complete, runnable examples are provided in separate files:
+
+- **`@examples_server.py`**: Server implementation examples
+  - Basic server with tools
+  - Server with resources
+  - Server with prompts
+  - Agent-specific filtering (Views/Profiles/Scopes)
+  - Complete server with error handling
+
+- **`@examples_client.py`**: Client implementation examples
+  - Basic stdio client
+  - HTTP client
+  - OAuth client
+  - Tool result parsing
+  - Display utilities
+  - Complete client workflow
+
+- **`@examples_integration.py`**: Integration patterns
+  - Single server architecture
+  - Dynamic tool discovery
+  - Orchestration pattern
+  - Views/Profiles/Scopes implementation
+  - Prompt design for dynamic tools
+
+## Dependencies
+
+This rule references:
+- `@api-interface-and-streaming` - API patterns and streaming
+- `@agentic-logic-and-tools` - Tool design patterns
+- `@data-schemas-and-interfaces` - Pydantic schema standards
+- `@core-python-standards` - Code quality standards
+- `@error-handling-and-resilience` - Error handling patterns
+- `@security-governance-and-observability` - Security standards
+- `@performance-optimization` - Performance strategies
+
+## Installation
+
+Install the MCP Python SDK:
+
+```bash
+pip install mcp
+```
+
+Or with uv:
+
+```bash
+uv add mcp
+```
+
+## Additional Resources
+
+- [MCP Python SDK GitHub](https://github.com/modelcontextprotocol/python-sdk)
+- [MCP Protocol Specification](https://modelcontextprotocol.io)
+- [MCP Documentation](https://modelcontextprotocol.github.io/python-sdk/)

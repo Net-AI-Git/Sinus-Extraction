@@ -1,0 +1,283 @@
+---
+globs: **/prompts/**/*.py, **/prompts/**/*.yaml, **/prompts/**/*.txt
+alwaysApply: false
+---
+
+## 1. Prompt as Code
+
+* **Separation:** Prompts must NOT be hardcoded strings inside Python logic functions.
+
+* **Storage:** Store prompts in dedicated files (e.g., `prompts.py`, YAML, or text templates) or a dedicated directory.
+
+* **Templating:** Use **Jinja2** (or LangChain's PromptTemplates) for dynamic insertion of variables. String concatenation (`+`) for prompts is forbidden.
+
+
+
+## 2. Structure & Clarity
+
+* **XML Tagging:** Use XML-style tags (e.g., `<context>...</context>`, `<instructions>...</instructions>`) to clearly delimit sections for the LLM. This significantly improves adherence in modern models (Claude/GPT-4).
+
+* **System Prompts:** Every agent must have a distinct System Prompt defining its `Persona`, `Constraints`, and `Output Format`.
+
+
+
+## 3. Versioning
+
+* **Tracking:** Prompts are experimental. Version them (e.g., `prompts/agent_v1.py`, `prompts/agent_v2.py`) to allow A/B testing and rollback.
+
+* **Version Control:**
+  * **Semantic Versioning:** Use semantic versioning for prompts (e.g., `v1.0.0`, `v1.1.0`, `v2.0.0`)
+  * **Version Tags:** Tag versions with meaningful names (e.g., `production`, `experimental`, `deprecated`)
+  * **Version History:** Maintain changelog for prompt versions documenting changes and rationale
+
+* **A/B Testing:**
+  * **Parallel Versions:** Run multiple prompt versions in parallel for comparison
+  * **Traffic Splitting:** Split traffic between versions (e.g., 50/50, 90/10)
+  * **Metrics Collection:** Collect performance metrics for each version
+  * **Winner Selection:** Select winning version based on metrics (quality, cost, latency)
+
+* **Rollback Strategy:**
+  * **Quick Rollback:** Maintain ability to quickly rollback to previous version
+  * **Version Registry:** Keep registry of all prompt versions with metadata
+  * **Rollback Triggers:** Define conditions for automatic rollback (e.g., quality drop, errors)
+
+**See:** `@examples_prompt_versioning.py` for version control patterns and A/B testing implementation.
+
+## 4. Prompt Testing
+
+* **Mandate:** Prompts are code and must be tested like code. Senior engineers must implement unit tests for prompts.
+
+* **Unit Testing:**
+  * **Test Cases:** Create test cases with input/output pairs for each prompt
+  * **Validation:** Validate prompt outputs against expected results
+  * **Edge Cases:** Test edge cases and boundary conditions
+  * **Regression Testing:** Run tests on prompt updates to detect regressions
+
+* **Test Framework:**
+  * **Prompt Test Suites:** Organize tests into test suites per prompt
+  * **Assertions:** Use assertions to validate prompt behavior
+  * **Mock LLM:** Use mock LLM responses for fast, deterministic tests
+  * **CI/CD Integration:** Run prompt tests in CI/CD pipeline
+
+* **Quality Checks:**
+  * **Output Validation:** Validate output format, structure, completeness
+  * **Constraint Checking:** Verify prompts respect constraints and guidelines
+  * **Token Counting:** Verify prompts stay within token limits
+  * **Performance Testing:** Test prompt performance (latency, cost)
+
+**See:** `@examples_prompt_testing.py` for unit testing patterns and test framework implementation.
+
+## 5. LangSmith Prompt Hub Integration
+
+* **Mandate:** Use LangSmith Prompt Hub for centralized prompt management in production systems.
+
+* **Prompt Hub Benefits:**
+  * **Centralized Storage:** Single source of truth for all prompts
+  * **Version Management:** Built-in version control and history
+  * **Collaboration:** Team collaboration on prompt development
+  * **Deployment:** Easy deployment and rollback of prompts
+
+* **Integration Patterns:**
+  * **Prompt Registration:** Register prompts in Prompt Hub with metadata
+  * **Prompt Retrieval:** Retrieve prompts from Hub at runtime
+  * **Version Selection:** Select specific prompt versions from Hub
+  * **Update Workflow:** Update prompts through Hub with approval process
+
+* **Metadata Management:**
+  * **Tags:** Tag prompts with categories, use cases, models
+  * **Descriptions:** Document prompt purpose, inputs, outputs
+  * **Performance Metrics:** Track performance metrics per prompt version
+  * **Dependencies:** Document prompt dependencies and relationships
+
+**See:** `@examples_langsmith_integration.py` for LangSmith Prompt Hub integration patterns.
+
+## 6. YAML Management
+
+* **Structured Storage:** Store prompts in YAML files for structured, readable format.
+
+* **YAML Structure:**
+  * **Metadata:** Version, author, description, tags
+  * **Prompt Content:** Actual prompt text with variables
+  * **Variables:** Define variables and their types/descriptions
+  * **Examples:** Include example inputs/outputs
+  * **Tests:** Embed test cases in YAML
+
+* **YAML Schema:**
+  ```yaml
+  version: "1.0.0"
+  name: "agent_system_prompt"
+  description: "System prompt for main agent"
+  variables:
+    - name: "user_context"
+      type: "string"
+      description: "User context information"
+  prompt: |
+    You are an expert AI assistant...
+    <context>{{ user_context }}</context>
+  examples:
+    - input: { user_context: "..." }
+      expected_output: "..."
+  ```
+
+* **YAML Tools:**
+  * **Validation:** Validate YAML schema before use
+  * **Parsing:** Parse YAML to extract prompts and variables
+  * **Templating:** Use YAML with Jinja2 for dynamic prompts
+
+**See:** `@examples_prompt_versioning.py` for YAML management patterns.
+
+## 7. Prompt Registry
+
+* **Centralized Management:** Maintain a prompt registry for all prompts in the system.
+
+* **Registry Structure:**
+  * **Prompt ID:** Unique identifier for each prompt
+  * **Version:** Current and historical versions
+  * **Metadata:** Tags, descriptions, ownership
+  * **Usage:** Track where and how prompts are used
+  * **Performance:** Performance metrics per version
+
+* **Registry Operations:**
+  * **Registration:** Register new prompts with metadata
+  * **Lookup:** Lookup prompts by ID, tags, or use case
+  * **Versioning:** Manage versions and track changes
+  * **Deprecation:** Mark prompts as deprecated with migration path
+
+* **Integration:**
+  * **Runtime Lookup:** Lookup prompts at runtime from registry
+  * **Configuration:** Configure prompt selection via registry
+  * **Monitoring:** Monitor prompt usage and performance via registry
+
+## 8. Context Management
+
+* **Token Counting:** You must estimate token usage before sending a prompt.
+
+* **Truncation:** Implement logic to truncate "History" or "Context" if it exceeds model limits (FIFO - First In First Out, or Summary-based).
+
+## 9. Runtime A/B Testing in Agentic Loops
+
+### Mandate
+
+All agentic systems **MUST** support runtime A/B testing of prompts within agentic loops. Unlike static A/B testing that runs before deployment, runtime A/B testing allows dynamic prompt version selection and real-time metrics collection during agent execution. This enables continuous optimization of prompts based on actual agent behavior and performance.
+
+### Runtime Prompt Version Selection
+
+* **Dynamic Selection:**
+  * **Context-Aware Routing:** Select prompt version based on current context, user profile, or task type
+  * **Performance-Based Selection:** Prefer prompt versions with better recent performance metrics
+  * **Adaptive Traffic Splitting:** Adjust traffic split between versions based on real-time performance
+  * **Version Assignment:** Assign prompt version at runtime, not at request start
+
+* **Selection Criteria:**
+  * **User Context:** Select version based on user characteristics or history
+  * **Task Complexity:** Different versions for simple vs complex tasks
+  * **Performance Metrics:** Select version with best quality/latency/cost ratio
+  * **Random Assignment:** Use consistent hashing for deterministic assignment per user/session
+
+**See:** `@examples_prompt_versioning.py` for runtime prompt version selection implementation.
+
+### Context-Aware Prompt Routing
+
+* **Routing Logic:**
+  * **User-Based Routing:** Route to different prompt versions based on user segment
+  * **Task-Based Routing:** Route based on task type or complexity
+  * **State-Based Routing:** Route based on LangGraph state or workflow stage
+  * **Performance-Based Routing:** Route to better-performing versions
+
+* **Routing Configuration:**
+  * **Routing Rules:** Define rules for prompt version selection
+  * **Conditional Routing:** Use conditions (if/else) for version selection
+  * **Fallback Routing:** Default to production version if routing fails
+  * **A/B Test Override:** Override routing for active A/B tests
+
+* **Implementation:**
+  * **Runtime Router:** Implement router that selects prompt version at runtime
+  * **State Integration:** Access LangGraph state for routing decisions
+  * **Context Extraction:** Extract relevant context for routing
+  * **Version Resolution:** Resolve prompt version from registry or cache
+
+### In-Loop Metrics Collection
+
+* **Real-Time Metrics:**
+  * **Quality Metrics:** Collect quality scores per prompt version during execution
+  * **Latency Metrics:** Track response time per prompt version
+  * **Cost Metrics:** Track token usage and cost per prompt version
+  * **Success Metrics:** Track success/failure rates per version
+
+* **Metrics Collection Points:**
+  * **Node Entry:** Collect metrics when entering LangGraph node
+  * **LLM Call:** Collect metrics during LLM API call
+  * **Node Exit:** Collect metrics when exiting node
+  * **Workflow Completion:** Aggregate metrics at workflow end
+
+* **Metrics Storage:**
+  * **In-Memory Tracking:** Store metrics in LangGraph state for immediate access
+  * **Persistent Storage:** Store metrics in database for analysis
+  * **Real-Time Aggregation:** Aggregate metrics in real-time for dashboards
+  * **Metrics Export:** Export metrics to monitoring systems
+
+**See:** `@examples_prompt_versioning.py` for in-loop metrics collection implementation.
+
+### Dynamic Traffic Splitting
+
+* **Adaptive Splitting:**
+  * **Performance-Based:** Adjust traffic split based on version performance
+  * **Confidence-Based:** Increase traffic to versions with higher confidence
+  * **Time-Based:** Gradually increase traffic to new versions
+  * **Manual Override:** Allow manual adjustment of traffic splits
+
+* **Splitting Strategies:**
+  * **Fixed Split:** Maintain fixed percentage (e.g., 50/50)
+  * **Progressive Split:** Gradually increase traffic to new version
+  * **Winner-Take-All:** Route all traffic to best-performing version
+  * **Multi-Armed Bandit:** Use bandit algorithm for optimal exploration/exploitation
+
+* **Split Configuration:**
+  * **Percentage-Based:** Define traffic percentages per version
+  * **Rule-Based:** Define rules for traffic allocation
+  * **Dynamic Adjustment:** Automatically adjust splits based on metrics
+  * **Rollback Triggers:** Automatically reduce traffic on quality degradation
+
+### Integration with LangGraph State
+
+* **State Tracking:**
+  * **Version Assignment:** Store assigned prompt version in state
+  * **Metrics Storage:** Store metrics in state for node access
+  * **Context Preservation:** Preserve context for routing decisions
+  * **Version History:** Track version changes during workflow
+
+* **State Schema:**
+  * **Prompt Version Field:** Add `prompt_version` field to state
+  * **Metrics Field:** Add `prompt_metrics` field for metrics storage
+  * **AB Test Context:** Add `ab_test_context` for A/B test metadata
+  * **Version History:** Add `version_history` for tracking
+
+* **Node Integration:**
+  * **Version Selection:** Select prompt version in node READ phase
+  * **Metrics Collection:** Collect metrics in node DO phase
+  * **State Update:** Update state with metrics in node WRITE phase
+  * **Routing Decision:** Use state for routing in CONTROL phase
+
+**See:** `langgraph-architecture-and-nodes.md` for state management patterns.
+
+### Real-Time Performance Monitoring
+
+* **Performance Dashboards:**
+  * **Version Comparison:** Compare performance metrics across versions
+  * **Real-Time Updates:** Update dashboards in real-time
+  * **Alerting:** Alert on performance degradation
+  * **Trend Analysis:** Analyze performance trends over time
+
+* **Performance Metrics:**
+  * **Quality Score:** Aggregate quality metrics per version
+  * **Latency P50/P95/P99:** Track latency percentiles
+  * **Cost Per Request:** Calculate average cost per request
+  * **Success Rate:** Track success/failure rates
+
+* **Automated Actions:**
+  * **Auto-Rollback:** Automatically rollback on quality drop
+  * **Traffic Adjustment:** Automatically adjust traffic splits
+  * **Version Promotion:** Promote version to production on success
+  * **Alert Generation:** Generate alerts for anomalies
+
+**See:** `@examples_prompt_versioning.py` for runtime A/B testing manager implementation.

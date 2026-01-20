@@ -1,0 +1,193 @@
+---
+globs: **/migrations/**/*.py, **/alembic/**/*.py
+alwaysApply: false
+---
+
+## 1. Schema Migration Strategies
+
+* **Migration Tools:**
+    * **Alembic:** Use Alembic for SQLAlchemy-based applications.
+    * **Flyway/Liquibase:** Use for non-Python applications or when Alembic is not suitable.
+    * **Custom Scripts:** Use custom migration scripts for complex migrations.
+
+* **Migration Best Practices:**
+    * **Idempotent:** Make migrations idempotent (safe to run multiple times).
+    * **Reversible:** Create reverse migrations for rollback capability.
+    * **Atomic:** Ensure migrations are atomic (all-or-nothing).
+    * **Tested:** Test migrations on staging before production.
+
+* **Migration Types:**
+    * **Additive:** Adding new columns, tables (low risk).
+    * **Destructive:** Dropping columns, tables (high risk, requires careful planning).
+    * **Data Transformations:** Transforming existing data (medium risk).
+
+* **Migration Execution:**
+    * **Automated:** Run migrations as part of deployment process.
+    * **Manual Approval:** Require manual approval for destructive migrations.
+    * **Rollback Plan:** Always have a rollback plan for migrations.
+
+**See:** `@examples_migrations.py` for Alembic migration structure pattern.
+
+## 2. Backward Compatibility Guarantees
+
+* **API Compatibility:**
+    * **Versioning:** Use API versioning to manage breaking changes (see `api-documentation-standards.md`).
+    * **Deprecation:** Deprecate old versions before removing them.
+    * **Migration Period:** Provide migration period (e.g., 6 months) before removing deprecated versions.
+
+* **Data Schema Compatibility:**
+    * **Additive Changes:** Prefer additive changes (adding columns) over destructive changes.
+    * **Optional Fields:** Make new fields optional to maintain backward compatibility.
+    * **Default Values:** Provide default values for new required fields.
+
+* **Code Compatibility:**
+    * **Gradual Rollout:** Roll out changes gradually to detect compatibility issues.
+    * **Feature Flags:** Use feature flags to control new functionality (see `versioning-and-release-management.md`).
+    * **Monitoring:** Monitor for compatibility issues during rollout.
+
+* **Client Compatibility:**
+    * **Client Versions:** Track client versions and maintain compatibility with older versions.
+    * **Graceful Degradation:** Provide graceful degradation for older clients.
+
+## 3. Data Transformation Patterns
+
+* **ETL Pattern (Extract, Transform, Load):**
+    * **Extract:** Extract data from source.
+    * **Transform:** Transform data to target format.
+    * **Load:** Load transformed data to target.
+
+* **In-Place Transformation:**
+    * **Update in Place:** Update existing records in place.
+    * **Batch Processing:** Process in batches to avoid locking issues.
+    * **Validation:** Validate transformed data before committing.
+
+* **Dual-Write Pattern:**
+    * **Write to Both:** Write to both old and new formats during migration.
+    * **Read from Old:** Read from old format until migration complete.
+    * **Switch:** Switch to new format after migration verified.
+
+* **Backfill Pattern:**
+    * **Historical Data:** Backfill historical data to new format.
+    * **Incremental:** Process data incrementally to avoid overwhelming system.
+    * **Verification:** Verify backfilled data matches original data.
+
+## 4. Zero-Downtime Migrations
+
+* **Strategy:**
+    * **Additive First:** Add new columns/tables before removing old ones.
+    * **Dual-Write:** Write to both old and new formats.
+    * **Gradual Migration:** Migrate data gradually (batch by batch).
+    * **Switch Over:** Switch to new format after all data migrated.
+    * **Cleanup:** Remove old columns/tables after switchover verified.
+
+* **Example Flow:**
+    1. Add new column (nullable).
+    2. Update application to write to both old and new columns.
+    3. Backfill existing data to new column.
+    4. Update application to read from new column.
+    5. Remove old column.
+
+**See:** `@examples_zero_downtime.py` for zero-downtime migration pattern with dual-write strategy.
+
+* **Rollback Plan:**
+    * **Keep Old Format:** Keep old format until migration fully verified.
+    * **Quick Switch:** Be able to quickly switch back to old format if issues arise.
+    * **Monitoring:** Monitor for issues during and after migration.
+
+* **Testing:**
+    * **Staging:** Test migration on staging environment first.
+    * **Load Testing:** Test migration under production-like load.
+    * **Rollback Testing:** Test rollback procedure.
+
+## 5. Versioning Data Structures
+
+* **Schema Versioning:**
+    * **Version Field:** Add version field to track schema version.
+    * **Migration Tracking:** Track which migrations have been applied.
+    * **Version Compatibility:** Maintain compatibility between versions.
+
+* **Data Format Versioning:**
+    * **Format Version:** Include format version in data structures.
+    * **Upgrade Path:** Provide upgrade path for old formats.
+    * **Deprecation:** Deprecate old formats before removing support.
+
+* **API Data Versioning:**
+    * **Request/Response Versions:** Version request and response formats.
+    * **Transformation:** Transform between versions as needed.
+    * **See:** `api-documentation-standards.md` for API versioning.
+
+* **Storage Format Versioning:**
+    * **File Formats:** Version file formats (e.g., configuration files, data exports).
+    * **Upgrade Scripts:** Provide scripts to upgrade old formats.
+    * **Backward Compatibility:** Support reading old formats.
+
+## 6. Migration Rollback Procedures
+
+* **Rollback Planning:**
+    * **Before Migration:** Plan rollback procedure before starting migration.
+    * **Test Rollback:** Test rollback procedure on staging.
+    * **Documentation:** Document rollback steps clearly.
+
+* **Rollback Strategies:**
+    * **Reverse Migration:** Run reverse migration to undo changes.
+    * **Data Restore:** Restore data from backup if migration corrupted data.
+    * **Code Rollback:** Rollback code to previous version if migration is code-dependent.
+
+**See:** `@examples_rollback.py` for migration rollback pattern.
+
+* **Rollback Triggers:**
+    * **Error Rate:** Rollback if error rate increases after migration.
+    * **Data Corruption:** Rollback if data corruption detected.
+    * **Performance Degradation:** Rollback if performance degrades significantly.
+
+* **Post-Rollback:**
+    * **Investigation:** Investigate root cause of migration failure.
+    * **Fix:** Fix issues before retrying migration.
+    * **Documentation:** Document lessons learned.
+
+* **See:** `deployment-and-infrastructure.md` for general rollback procedures.
+
+## 7. Migration Testing
+
+* **Unit Testing:**
+    * **Migration Scripts:** Test migration scripts in isolation.
+    * **Reverse Migrations:** Test reverse migrations.
+    * **Edge Cases:** Test edge cases (empty tables, null values, etc.).
+
+* **Integration Testing:**
+    * **Full Migration:** Test complete migration on test database.
+    * **Data Integrity:** Verify data integrity after migration.
+    * **Performance:** Test migration performance.
+
+* **Staging Testing:**
+    * **Production-Like:** Test on staging environment that mirrors production.
+    * **Load Testing:** Test migration under production-like load.
+    * **Rollback Testing:** Test rollback procedure on staging.
+
+* **Validation:**
+    * **Data Validation:** Validate migrated data matches original data.
+    * **Count Verification:** Verify record counts match before and after migration.
+    * **Sample Verification:** Manually verify sample records.
+
+## 8. Migration Monitoring
+
+* **Metrics:**
+    * **Migration Duration:** Track how long migration takes.
+    * **Records Processed:** Track number of records processed.
+    * **Error Rate:** Track errors during migration.
+    * **Performance Impact:** Monitor performance impact on system.
+
+* **Logging:**
+    * **Detailed Logs:** Log detailed information about migration progress.
+    * **Error Logging:** Log all errors with full context.
+    * **Checkpointing:** Log checkpoints for resumable migrations.
+
+* **Alerts:**
+    * **Failure Alerts:** Alert on migration failures.
+    * **Performance Alerts:** Alert if migration impacts system performance.
+    * **Completion Alerts:** Alert when migration completes.
+
+* **Reporting:**
+    * **Status Reports:** Provide status reports during long-running migrations.
+    * **Completion Report:** Provide summary report after migration completes.
+    * **Issue Report:** Document any issues encountered during migration.

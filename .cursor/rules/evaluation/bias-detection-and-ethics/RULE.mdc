@@ -1,0 +1,353 @@
+---
+description: "Bias detection and ethical AI practices for agentic systems including long-term memory bias monitoring and fairness metrics"
+alwaysApply: false
+---
+
+## Mandate
+
+All agentic systems **MUST** implement bias detection and ethical AI practices to ensure fair, unbiased, and ethical behavior. Agents with long-term memory can learn and amplify biases from user interactions over time. Senior engineers must implement comprehensive bias detection, monitoring, and mitigation strategies to prevent discriminatory behavior and ensure ethical AI practices.
+
+## 1. Bias Detection Mechanisms
+
+### Bias Types
+
+* **Mandate:** Detect and monitor various types of biases in agentic systems.
+
+* **Bias Categories:**
+  * **Demographic Bias:** Bias based on demographic characteristics (age, gender, race, ethnicity)
+  * **Cultural Bias:** Bias based on cultural background or language
+  * **Socioeconomic Bias:** Bias based on socioeconomic status
+  * **Confirmation Bias:** Tendency to favor information that confirms existing beliefs
+  * **Selection Bias:** Bias in data selection or user interaction patterns
+  * **Temporal Bias:** Bias that develops over time from repeated interactions
+
+* **Bias Sources:**
+  * **Training Data:** Biases in training data used for LLMs
+  * **User Interactions:** Biases learned from user interactions
+  * **Long-Term Memory:** Biases accumulated in long-term memory
+  * **Prompt Design:** Biases introduced through prompt design
+  * **Tool Responses:** Biases in tool responses or data sources
+
+**See:** `@examples_bias_detection.py` for bias detection implementation.
+
+### Detection Methods
+
+* **Statistical Detection:**
+  * **Disparate Impact Analysis:** Measure impact across different groups
+  * **Demographic Parity:** Check if outcomes are balanced across demographics
+  * **Equalized Odds:** Verify equal true positive and false positive rates
+  * **Calibration:** Check if predictions are calibrated across groups
+
+* **Content Analysis:**
+  * **Sentiment Analysis:** Analyze sentiment across different groups
+  * **Language Analysis:** Detect biased language or terminology
+  * **Topic Analysis:** Identify topics that favor certain groups
+  * **Representation Analysis:** Check representation of different groups
+
+* **Behavioral Analysis:**
+  * **Interaction Patterns:** Analyze interaction patterns across groups
+  * **Response Quality:** Compare response quality across groups
+  * **Recommendation Patterns:** Analyze recommendation patterns
+  * **Error Rates:** Compare error rates across groups
+
+**See:** `@examples_bias_detection.py` for detection method implementation.
+
+### Automated Detection
+
+* **Real-Time Monitoring:**
+  * **Continuous Monitoring:** Monitor for biases in real-time
+  * **Anomaly Detection:** Detect anomalous patterns that indicate bias
+  * **Threshold Alerts:** Alert when bias metrics exceed thresholds
+  * **Trend Analysis:** Analyze trends in bias metrics over time
+
+* **Batch Analysis:**
+  * **Periodic Audits:** Conduct periodic bias audits
+  * **Historical Analysis:** Analyze historical data for biases
+  * **Comparative Analysis:** Compare current vs historical metrics
+  * **Report Generation:** Generate bias detection reports
+
+## 2. Long-Term Memory Bias Monitoring
+
+### Memory Bias Accumulation
+
+* **Mandate:** Monitor biases that accumulate in long-term memory over time.
+
+* **Bias Accumulation Patterns:**
+  * **Reinforcement:** Biases reinforced through repeated interactions
+  * **Amplification:** Biases amplified through memory retrieval
+  * **Echo Chambers:** Formation of echo chambers in user profiles
+  * **Filter Bubbles:** Creation of filter bubbles through personalized content
+
+* **Monitoring Strategies:**
+  * **Memory Audits:** Regular audits of long-term memory content
+  * **Bias Tracking:** Track bias metrics over time
+  * **Pattern Detection:** Detect patterns that indicate bias accumulation
+  * **User Profile Analysis:** Analyze user profiles for bias indicators
+
+**See:** `memory-and-archival-management.md` for memory management patterns.
+
+### Memory Bias Detection
+
+* **Content Analysis:**
+  * **Memory Content Review:** Review stored memories for biased content
+  * **Sentiment Tracking:** Track sentiment in stored memories
+  * **Topic Distribution:** Analyze topic distribution in memories
+  * **Language Patterns:** Detect biased language patterns
+
+* **Retrieval Analysis:**
+  * **Retrieval Patterns:** Analyze which memories are retrieved
+  * **Relevance Bias:** Detect if certain memories are over-retrieved
+  * **Context Bias:** Detect if context influences memory retrieval
+  * **Selection Bias:** Detect selection bias in memory retrieval
+
+* **Update Analysis:**
+  * **Update Patterns:** Analyze how memories are updated
+  * **Bias Propagation:** Track how biases propagate through updates
+  * **Correction Tracking:** Track bias corrections in memory
+  * **Version History:** Maintain version history for bias analysis
+
+**See:** `@examples_bias_detection.py` for memory bias detection implementation.
+
+### Bias Mitigation in Memory
+
+* **Mitigation Strategies:**
+  * **Bias Correction:** Correct biased memories when detected
+  * **Memory Filtering:** Filter out biased memories from retrieval
+  * **Diversity Promotion:** Promote diverse memories in retrieval
+  * **Balanced Updates:** Ensure balanced updates to memory
+
+* **Implementation:**
+  * **Bias Filters:** Implement filters to detect and remove biased memories
+  * **Correction Mechanisms:** Implement mechanisms to correct biases
+  * **Diversity Algorithms:** Use algorithms to promote diversity
+  * **Validation:** Validate memory updates for bias
+
+## 3. Fairness Metrics
+
+### Fairness Definitions
+
+* **Mandate:** Define and measure fairness metrics for agentic systems.
+
+* **Fairness Types:**
+  * **Demographic Parity:** Equal outcomes across demographic groups
+  * **Equalized Odds:** Equal true positive and false positive rates
+  * **Calibration:** Predictions calibrated across groups
+  * **Individual Fairness:** Similar individuals receive similar treatment
+
+* **Metric Calculation:**
+  * **Group-Based Metrics:** Calculate metrics per demographic group
+  * **Comparative Analysis:** Compare metrics across groups
+  * **Threshold Definition:** Define fairness thresholds
+  * **Violation Detection:** Detect fairness violations
+
+**See:** `@examples_bias_detection.py` for fairness metrics implementation.
+
+### FairnessMetrics Class
+
+* **Metrics:**
+  * **Demographic Parity Score:** Measure of demographic parity
+  * **Equalized Odds Score:** Measure of equalized odds
+  * **Calibration Score:** Measure of calibration
+  * **Individual Fairness Score:** Measure of individual fairness
+
+* **Calculation:**
+  * **Data Collection:** Collect data for fairness calculation
+  * **Group Segmentation:** Segment data by demographic groups
+  * **Metric Computation:** Compute fairness metrics
+  * **Threshold Comparison:** Compare metrics to thresholds
+
+* **Reporting:**
+  * **Fairness Reports:** Generate fairness reports
+  * **Visualization:** Visualize fairness metrics
+  * **Trend Analysis:** Analyze fairness trends over time
+  * **Alerting:** Alert on fairness violations
+
+**See:** `@examples_bias_detection.py` for FairnessMetrics implementation.
+
+### Continuous Fairness Monitoring
+
+* **Monitoring Requirements:**
+  * **Real-Time Monitoring:** Monitor fairness in real-time
+  * **Periodic Audits:** Conduct periodic fairness audits
+  * **Trend Tracking:** Track fairness trends over time
+  * **Violation Alerts:** Alert on fairness violations
+
+* **Integration:**
+  * **Production Monitoring:** Integrate with production monitoring
+  * **Dashboard Integration:** Display fairness metrics in dashboards
+  * **Alert Integration:** Integrate with alerting systems
+  * **Reporting Integration:** Integrate with reporting systems
+
+## 4. Bias Mitigation Strategies
+
+### Mitigation Approaches
+
+* **Mandate:** Implement bias mitigation strategies to reduce biases in agentic systems.
+
+* **Mitigation Types:**
+  * **Pre-Processing:** Mitigate biases before processing
+  * **In-Processing:** Mitigate biases during processing
+  * **Post-Processing:** Mitigate biases after processing
+  * **Hybrid Approaches:** Combine multiple mitigation approaches
+
+* **Implementation:**
+  * **Data Balancing:** Balance training data across groups
+  * **Prompt Engineering:** Design prompts to reduce bias
+  * **Output Filtering:** Filter biased outputs
+  * **Diversity Promotion:** Promote diverse outputs
+
+**See:** `@examples_bias_detection.py` for bias mitigation implementation.
+
+### Prompt-Based Mitigation
+
+* **Prompt Design:**
+  * **Bias-Free Language:** Use bias-free language in prompts
+  * **Diversity Instructions:** Include diversity instructions in prompts
+  * **Fairness Constraints:** Add fairness constraints to prompts
+  * **Ethical Guidelines:** Include ethical guidelines in prompts
+
+* **Prompt Testing:**
+  * **Bias Testing:** Test prompts for bias
+  * **Fairness Validation:** Validate prompt fairness
+  * **Diversity Testing:** Test prompt diversity
+  * **Ethical Review:** Review prompts for ethical issues
+
+### Output-Based Mitigation
+
+* **Output Filtering:**
+  * **Bias Detection:** Detect biases in outputs
+  * **Content Filtering:** Filter biased content
+  * **Language Filtering:** Filter biased language
+  * **Recommendation Filtering:** Filter biased recommendations
+
+* **Output Correction:**
+  * **Bias Correction:** Correct biases in outputs
+  * **Diversity Enhancement:** Enhance diversity in outputs
+  * **Fairness Adjustment:** Adjust outputs for fairness
+  * **Quality Validation:** Validate output quality
+
+### Memory-Based Mitigation
+
+* **Memory Management:**
+  * **Bias Filtering:** Filter biased memories
+  * **Memory Correction:** Correct biased memories
+  * **Diversity Promotion:** Promote diverse memories
+  * **Balanced Retrieval:** Ensure balanced memory retrieval
+
+* **Update Strategies:**
+  * **Bias-Aware Updates:** Update memories with bias awareness
+  * **Correction Mechanisms:** Implement correction mechanisms
+  * **Validation:** Validate memory updates for bias
+  * **Version Control:** Maintain version control for bias tracking
+
+**See:** `memory-and-archival-management.md` for memory management patterns.
+
+## 5. Ethical AI Guidelines
+
+### Ethical Principles
+
+* **Mandate:** Follow ethical AI principles in agentic system design and operation.
+
+* **Core Principles:**
+  * **Fairness:** Ensure fair treatment across all groups
+  * **Transparency:** Maintain transparency in decision-making
+  * **Accountability:** Ensure accountability for system behavior
+  * **Privacy:** Protect user privacy and data
+  * **Safety:** Ensure system safety and reliability
+  * **Human Dignity:** Respect human dignity and rights
+
+* **Implementation:**
+  * **Ethical Review:** Conduct ethical reviews of system design
+  * **Ethical Guidelines:** Define and follow ethical guidelines
+  * **Ethical Training:** Train team on ethical AI practices
+  * **Ethical Monitoring:** Monitor system for ethical compliance
+
+### Ethical Decision-Making
+
+* **Decision Framework:**
+  * **Ethical Analysis:** Analyze decisions for ethical implications
+  * **Stakeholder Consideration:** Consider impact on all stakeholders
+  * **Harm Assessment:** Assess potential harm from decisions
+  * **Benefit Analysis:** Analyze benefits of decisions
+
+* **Conflict Resolution:**
+  * **Ethical Conflicts:** Identify and resolve ethical conflicts
+  * **Trade-off Analysis:** Analyze trade-offs in ethical decisions
+  * **Human Review:** Require human review for ethical decisions
+  * **Documentation:** Document ethical decision-making process
+
+### Ethical Monitoring
+
+* **Monitoring Requirements:**
+  * **Ethical Compliance:** Monitor for ethical compliance
+  * **Ethical Violations:** Detect ethical violations
+  * **Impact Assessment:** Assess ethical impact of system
+  * **Stakeholder Feedback:** Collect stakeholder feedback
+
+* **Reporting:**
+  * **Ethical Reports:** Generate ethical compliance reports
+  * **Violation Reports:** Report ethical violations
+  * **Impact Reports:** Report ethical impact assessments
+  * **Stakeholder Reports:** Report to stakeholders
+
+## 6. Integration Points
+
+### Memory Integration
+
+* **Long-Term Memory:**
+  * **Bias Monitoring:** Monitor biases in long-term memory
+  * **Memory Audits:** Conduct memory audits for bias
+  * **Bias Correction:** Correct biases in memory
+  * **Diversity Promotion:** Promote diversity in memory
+
+**See:** `memory-and-archival-management.md` for memory integration.
+
+### Evaluation Integration
+
+* **Evaluation Metrics:**
+  * **Bias Metrics:** Include bias metrics in evaluation
+  * **Fairness Metrics:** Include fairness metrics in evaluation
+  * **Ethical Metrics:** Include ethical metrics in evaluation
+  * **Quality Metrics:** Include quality metrics in evaluation
+
+**See:** `llm-evaluation-and-metrics.md` for evaluation integration.
+
+### Monitoring Integration
+
+* **Production Monitoring:**
+  * **Bias Monitoring:** Monitor biases in production
+  * **Fairness Monitoring:** Monitor fairness in production
+  * **Ethical Monitoring:** Monitor ethical compliance in production
+  * **Alerting:** Alert on bias or fairness violations
+
+**See:** `monitoring-and-observability.md` for monitoring integration.
+
+## 7. Best Practices
+
+### Bias Prevention
+
+* **Design Phase:**
+  * **Bias Assessment:** Assess potential biases in design
+  * **Diverse Teams:** Include diverse teams in design
+  * **Stakeholder Input:** Collect input from diverse stakeholders
+  * **Ethical Review:** Conduct ethical review of design
+
+* **Development Phase:**
+  * **Bias Testing:** Test for biases during development
+  * **Fairness Validation:** Validate fairness during development
+  * **Diversity Testing:** Test for diversity during development
+  * **Ethical Validation:** Validate ethical compliance
+
+### Continuous Improvement
+
+* **Regular Audits:**
+  * **Bias Audits:** Conduct regular bias audits
+  * **Fairness Audits:** Conduct regular fairness audits
+  * **Ethical Audits:** Conduct regular ethical audits
+  * **Impact Assessments:** Conduct regular impact assessments
+
+* **Feedback Integration:**
+  * **User Feedback:** Collect and integrate user feedback
+  * **Stakeholder Feedback:** Collect and integrate stakeholder feedback
+  * **Expert Review:** Conduct expert reviews
+  * **Community Input:** Collect input from affected communities

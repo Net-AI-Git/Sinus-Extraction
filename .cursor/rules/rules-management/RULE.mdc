@@ -1,0 +1,345 @@
+---
+globs: **/.cursor/rules/**/RULE.mdc
+alwaysApply: false
+---
+## Mandate
+
+When creating or updating Cursor Rules, you **MUST** follow this guide strictly. This document defines the exact format, structure, and process for all rules in this repository.
+
+**Important:** All rules in the `.cursor/rules` directory **MUST** use the `.mdc` file extension (not `.md`). Every rule file must be named `RULE.mdc`.
+
+## What are Cursor Rules?
+
+Cursor Rules provide system-level instructions to Agent. They bundle prompts, scripts, and more together, making it easy to manage and share workflows across your team. Rules are stored in `.cursor/rules` and are version-controlled.
+
+Rules are included at the start of the model context, giving the AI consistent guidance for generating code, interpreting edits, or helping with workflows.
+
+## Directory Structure
+
+Rules in this repository are organized by category:
+
+```
+.cursor/rules/
+├── core/              # Always-applied core rules (Python standards, error handling)
+├── security/          # Security and governance rules
+├── agents/            # Agent-specific rules (multi-agent, LangGraph, agentic logic)
+├── infrastructure/    # Deployment, monitoring, performance
+├── development/      # Testing, code review, versioning
+├── api/              # API-related rules
+├── data/             # Data schemas, migrations
+├── evaluation/       # LLM evaluation, judging, auditing
+├── configuration/    # Configuration, dependency injection, prompts
+└── rules-management/ # This rule (meta-rule for managing rules)
+```
+
+### Rule Folder Structure
+
+Each rule is a **folder** containing a `RULE.mdc` file:
+
+```
+.cursor/rules/
+  category-name/
+    rule-name/
+      RULE.mdc
+```
+
+**Important:** 
+- Each rule must be in its own folder
+- The folder name should be kebab-case (e.g., `core-python-standards`)
+- The file inside must be named exactly `RULE.mdc` (capital letters, `.mdc` extension)
+
+## Rule File Format
+
+Every `RULE.mdc` file **MUST** follow this structure:
+
+### 1. Frontmatter Metadata
+
+The file **MUST** start with YAML frontmatter between `---` markers:
+
+```markdown
+---
+[metadata fields]
+---
+
+[rule content]
+```
+
+### 2. Rule Types and Frontmatter
+
+There are 4 types of rules, each with different frontmatter requirements:
+
+- **Type 1: Always Apply** - Applied to every chat session automatically
+- **Type 2: Apply Intelligently** - Applied when Agent decides it's relevant based on description
+- **Type 3: Apply to Specific Files** - Applied when working on files matching specified patterns
+- **Type 4: Apply Manually** - Applied only when @-mentioned in chat
+
+**See:** `@frontmatter-reference` for complete frontmatter specifications, detailed instructions, examples, and quick reference templates for all rule types.
+
+## Creating a New Rule
+
+### Step 1: Determine Category
+
+Choose the appropriate category folder:
+- `core/` - Essential rules for all projects
+- `security/` - Security and governance
+- `agents/` - Agent-specific patterns
+- `infrastructure/` - Deployment and operations
+- `development/` - Development workflow
+- `api/` - API development
+- `data/` - Data management
+- `evaluation/` - LLM evaluation
+- `configuration/` - Configuration management
+
+### Step 2: Choose Rule Name
+
+- Use kebab-case (lowercase with hyphens)
+- Be descriptive and specific
+- Examples: `core-python-standards`, `api-documentation-standards`, `error-handling-and-resilience`
+
+### Step 3: Create Folder Structure
+
+Create the folder path:
+```
+.cursor/rules/[category]/[rule-name]/
+  RULE.mdc
+  [optional example files]
+```
+
+**CRITICAL: Use Helper Files for Code Examples**
+
+**MANDATE:** When writing rules with code examples, you **MUST** use separate helper files instead of embedding large code blocks directly in `RULE.mdc`. This keeps rules focused on guidance rather than implementation details.
+
+**See:** `@helper-files-guide` for complete guide on:
+- When and how to use helper files
+- Naming conventions and folder structure
+- How to reference helper files using `@filename` syntax
+- Best practices for organizing code examples
+- Validation checklist
+
+**Quick Summary:**
+- Helper files should be in the same folder as `RULE.mdc`
+- Use `examples_*.py` (or appropriate extension) naming convention
+- Reference helper files using `@filename` syntax: `See: @examples_server.py`
+- Keep `RULE.mdc` under 400 lines by extracting code examples
+
+### Step 4: Write Frontmatter
+
+Based on the rule type, write the correct frontmatter.
+
+**See:** `@frontmatter-reference` for complete frontmatter specifications, detailed step-by-step instructions, examples, and quick reference templates for all 4 rule types.
+
+### Step 5: Write Rule Content
+
+- Start content immediately after frontmatter (no blank line needed, but one is fine)
+- Use markdown formatting
+- **Do NOT** include the main title as `# Title` - start with `## Section` or content directly
+- Be clear, actionable, and specific
+- Provide examples when helpful
+- Reference other rules using `@rule-name` or `@filename` syntax
+
+### Step 6: Validate Structure
+
+Ensure:
+- ✅ Folder name is kebab-case
+- ✅ File is named exactly `RULE.mdc` (with `.mdc` extension)
+- ✅ Frontmatter is correct for the rule type
+- ✅ Content follows markdown best practices
+- ✅ Rule is under 500 lines (split if larger)
+
+## Updating an Existing Rule
+
+### Step 1: Locate the Rule
+
+Find the rule in the appropriate category folder:
+```
+.cursor/rules/[category]/[rule-name]/RULE.mdc
+```
+
+### Step 2: Understand Current Structure
+
+- Read the existing frontmatter
+- Understand the rule type
+- Note the current content structure
+
+### Step 3: Update Content
+
+When updating:
+- **Preserve** the frontmatter format (unless changing rule type)
+- **Maintain** the existing structure and style
+- **Update** only the necessary sections
+- **Keep** references to other rules/files intact
+- **Ensure** markdown formatting is preserved
+
+### Step 4: Update Metadata (if needed)
+
+If changing rule type:
+- Update frontmatter accordingly
+- Remove/add fields as required by new type
+- Ensure consistency with rule type requirements
+
+### Step 5: Validate
+
+After update:
+- ✅ Frontmatter is still valid
+- ✅ Content is properly formatted
+- ✅ Rule is still under 500 lines
+- ✅ All references are still valid
+
+## Best Practices
+
+### Content Guidelines
+
+1. **Keep Rules Focused**
+   - Each rule should cover one specific domain
+   - Avoid mixing unrelated topics
+   - Split large rules into multiple, composable rules
+
+2. **Length Limit and Helper Files**
+   - Keep rules under 400 lines (target: 300 lines or less)
+   - **MANDATE:** Use helper files for code examples - see `@helper-files-guide` for complete guide
+   - Move code examples to `examples_*.py` (or other appropriate extensions) files
+   - Reference examples using `@filename` syntax: `See: @examples_server.py`
+   - If a rule still exceeds 400 lines after extracting examples, split it into multiple rules
+
+3. **Be Actionable**
+   - Provide concrete, actionable guidance
+   - Avoid vague instructions
+   - Include examples when helpful
+
+4. **Reference, Don't Copy**
+   - **MANDATE:** Use helper files for code examples - see `@helper-files-guide` for complete guide
+   - Use `@filename` to reference files instead of copying content
+   - This keeps rules short and prevents staleness
+   - Reference other rules: `See: @core-python-standards.mdc for coding standards`
+   - Reference helper files in the same folder: `See: @examples_server.py for complete implementation`
+   - The Agent can read referenced files when needed, so you don't need to include full code in the rule
+   - **Best practice:** For rules with multiple code examples, always create `examples_*.py` files and reference them
+
+5. **Clear Structure**
+   - Use markdown headers (`##`, `###`) for organization
+   - Use lists for multiple items
+   - Use code blocks for examples
+
+### What to Avoid
+
+1. **Don't Copy Entire Style Guides**
+   - Use a linter instead
+   - Agent already knows common style conventions
+
+2. **Don't Document Every Command**
+   - Agent knows common tools like npm, git, pytest
+   - Focus on project-specific patterns
+
+3. **Don't Add Edge Cases**
+   - Keep rules focused on patterns you use frequently
+   - Avoid documenting rare edge cases
+
+4. **Don't Duplicate Code**
+   - **MANDATE:** Use helper files for code examples - see `@helper-files-guide`
+   - Point to canonical examples instead of copying code
+   - Use `@filename` references
+   - Only include very short examples (under 10 lines) inline
+   - Always create separate helper files when rule has multiple examples or examples are 15+ lines
+
+5. **Don't Include Main Title**
+   - Start with `## Section` or content directly
+   - The rule name (folder name) is the title
+
+## Examples
+
+### Example: Rule with Helper Files
+
+**Location:** `.cursor/rules/api/mcp-protocol-implementation/RULE.mdc`
+
+**Folder Structure:**
+```
+.cursor/rules/api/mcp-protocol-implementation/
+  RULE.mdc
+  examples_server.py
+  examples_client.py
+  examples_integration.py
+```
+
+**RULE.mdc content (excerpt):**
+```markdown
+---
+description: "Standards and patterns for implementing Model Context Protocol (MCP) servers and clients"
+alwaysApply: false
+---
+
+## MCP Server Implementation
+
+**See:** `@examples_server.py` for complete server implementation examples.
+
+## Client Implementation
+
+**See:** `@examples_client.py` for complete client examples.
+
+## Complete Examples
+
+- **`@examples_server.py`**: Server implementation examples
+- **`@examples_client.py`**: Client implementation examples
+- **`@examples_integration.py`**: Integration patterns
+```
+
+**Key Points:**
+- Rule stays focused on guidance (~300 lines)
+- Code examples are in separate helper files
+- References use `@filename` syntax
+- See `@helper-files-guide` for complete guide on using helper files
+
+### Other Rule Type Examples
+
+For examples of all 4 rule types (Always Apply, Apply Intelligently, Apply to Specific Files, Apply Manually), see `@frontmatter-reference` which includes complete examples for each type.
+
+## Validation Checklist
+
+Before finalizing any rule creation or update, verify:
+
+- [ ] Folder name is kebab-case
+- [ ] File is named exactly `RULE.mdc` (capital letters, `.mdc` extension)
+- [ ] Frontmatter is present and correctly formatted
+- [ ] Frontmatter matches the rule type requirements:
+  - [ ] Always Apply: only `alwaysApply: true`
+  - [ ] Apply Intelligently: `description` + `alwaysApply: false`
+  - [ ] Apply to Specific Files: `globs` string + `alwaysApply: false`
+  - [ ] Apply Manually: only `alwaysApply: false`
+- [ ] Content starts after frontmatter
+- [ ] No main title (`# Title`) - start with sections or content
+- [ ] Rule is under 400 lines (use helper files to achieve this)
+- [ ] Markdown formatting is correct
+- [ ] References use `@filename` syntax
+- [ ] Content is clear, actionable, and specific
+- [ ] If using helper files (see `@helper-files-guide`):
+  - [ ] Helper files are in the same folder as `RULE.mdc`
+  - [ ] Helper files use `examples_*.py` naming convention
+  - [ ] All helper files are referenced in `RULE.mdc` using `@filename` syntax
+  - [ ] Helper files contain complete, runnable code
+  - [ ] Rule explains what each helper file demonstrates
+
+## Quick Reference
+
+### Frontmatter Templates
+
+**See:** `@frontmatter-reference` for complete frontmatter templates, detailed instructions, and quick reference for all 4 rule types.
+
+### Helper Files Guide
+
+**See:** `@helper-files-guide` for complete guide on using helper files for code examples, including:
+- When to use helper files
+- Naming conventions and structure
+- How to reference helper files
+- Best practices and validation checklist
+
+## When Tagged
+
+When a user tags `@rules-management` or asks you to create/update a rule:
+
+1. **Identify the task:** Creating new rule or updating existing?
+2. **Determine category:** Which category folder is appropriate?
+3. **Choose rule type:** Which of the 4 types fits best?
+4. **Follow the process:** Use the steps above strictly
+5. **Validate:** Run through the checklist before completion
+6. **Confirm:** Show the user what was created/updated
+
+Remember: **Always follow this guide exactly** when working with rules. Consistency is critical for maintainability.

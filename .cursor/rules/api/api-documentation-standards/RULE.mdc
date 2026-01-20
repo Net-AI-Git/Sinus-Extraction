@@ -1,0 +1,173 @@
+---
+globs: **/api/**/*.py, **/routes/**/*.py, **/endpoints/**/*.py
+alwaysApply: false
+---
+
+## 1. OpenAPI/Swagger Specifications
+
+* **Mandate:** All API endpoints must be documented using OpenAPI 3.0 specification.
+
+* **FastAPI Integration:**
+    * **Automatic Generation:** Use FastAPI's automatic OpenAPI schema generation.
+    * **Customization:** Enhance auto-generated schemas with additional details.
+    * **Access:** Expose OpenAPI schema at `/openapi.json` and Swagger UI at `/docs`.
+
+* **Schema Completeness:**
+    * **Request Schemas:** Document all request parameters (path, query, body, headers).
+    * **Response Schemas:** Document all response schemas including success and error cases.
+    * **Examples:** Provide request/response examples for all endpoints.
+
+* **Validation:**
+    * **Pydantic Models:** Use Pydantic models for request/response validation and automatic schema generation.
+    * **Field Descriptions:** Include descriptions for all fields (see `data-schemas-and-interfaces.md`).
+
+## 2. API Versioning Strategy
+
+* **URL Versioning:**
+    * **Format:** `/api/v1/endpoint`, `/api/v2/endpoint`
+    * **Mandate:** Include version in URL path for all public APIs.
+    * **Default:** Latest version accessible at `/api/endpoint` (redirects to current version).
+
+* **Header Versioning:**
+    * **Format:** `Accept: application/vnd.api+json;version=1`
+    * **Use:** For internal APIs or when URL versioning is not feasible.
+
+* **Version Lifecycle:**
+    * **Deprecation:** Announce deprecation at least 6 months before removal.
+    * **Support:** Support at least 2 previous versions simultaneously.
+    * **Migration Guide:** Provide migration guide when breaking changes are introduced.
+
+* **Breaking Changes:**
+    * **Definition:** Changes that require client code modifications.
+    * **Process:** Breaking changes require new version number (major version increment).
+    * **Documentation:** Clearly document breaking changes in changelog.
+
+* **See:** `versioning-and-release-management.md` for versioning standards.
+
+## 3. Endpoint Documentation Requirements
+
+* **Required Information:**
+    * **Description:** Clear description of what the endpoint does.
+    * **HTTP Method:** GET, POST, PUT, DELETE, PATCH, etc.
+    * **Path:** Complete URL path with path parameters.
+    * **Authentication:** Required authentication method (API key, OAuth, JWT).
+    * **Request Parameters:** All parameters with types, descriptions, and examples.
+    * **Response Codes:** All possible HTTP status codes with descriptions.
+    * **Response Schema:** Structure of response body.
+    * **Error Responses:** All possible error responses with schemas.
+
+* **Examples:**
+    * **Request Example:** Provide curl command or code example.
+    * **Response Example:** Provide example response with realistic data.
+
+* **Use Cases:**
+    * **Primary Use Case:** Document the primary use case for the endpoint.
+    * **Edge Cases:** Document how edge cases are handled.
+
+## 4. Request/Response Examples
+
+* **Request Examples:**
+    * **Minimal:** Show minimal required request.
+    * **Complete:** Show request with all optional parameters.
+    * **Error Cases:** Show examples of invalid requests.
+
+* **Response Examples:**
+    * **Success:** Show successful response with realistic data.
+    * **Error:** Show error responses for different error scenarios.
+    * **Empty:** Show response for empty result sets.
+
+* **Format:**
+    * **JSON:** Use JSON format for examples.
+    * **Realistic Data:** Use realistic but anonymized data in examples.
+    * **Comments:** Add comments in examples to explain non-obvious fields.
+
+* **Code Examples:**
+    * **Python:** Provide Python code examples using `httpx` or `requests`.
+    * **JavaScript:** Provide JavaScript examples using `fetch` or `axios`.
+    * **cURL:** Provide cURL command examples.
+
+## 5. Error Response Schemas
+
+* **Standard Error Format:**
+    * **Structure:** Consistent error response structure across all endpoints.
+    * **Fields:**
+        * `error`: Error code or identifier.
+        * `message`: Human-readable error message.
+        * `details`: Additional error details (optional).
+        * `request_id`: Request ID for tracing (optional).
+        * `timestamp`: Error timestamp (optional).
+
+* **HTTP Status Codes:**
+    * **400 Bad Request:** Invalid request parameters or body.
+    * **401 Unauthorized:** Missing or invalid authentication.
+    * **403 Forbidden:** Authenticated but not authorized.
+    * **404 Not Found:** Resource not found.
+    * **429 Too Many Requests:** Rate limit exceeded.
+    * **500 Internal Server Error:** Server error.
+    * **503 Service Unavailable:** Service temporarily unavailable.
+
+* **Error Codes:**
+    * **Format:** Use consistent error code format (e.g., `INVALID_INPUT`, `RESOURCE_NOT_FOUND`).
+    * **Documentation:** Document all possible error codes for each endpoint.
+
+* **Validation Errors:**
+    * **Format:** Return detailed validation errors for invalid input.
+    * **Structure:** List all validation errors with field names and messages.
+
+## 6. Authentication Documentation
+
+* **Authentication Methods:**
+    * **API Keys:** Document how to obtain and use API keys.
+    * **OAuth2:** Document OAuth2 flow, endpoints, and token usage.
+    * **JWT:** Document JWT token format and usage.
+
+* **Security Schemes:**
+    * **OpenAPI:** Define security schemes in OpenAPI specification.
+    * **Examples:** Provide examples of authenticated requests.
+
+* **Token Management:**
+    * **Obtaining Tokens:** Document how to obtain authentication tokens.
+    * **Token Refresh:** Document token refresh process if applicable.
+    * **Token Expiration:** Document token expiration and handling.
+
+* **Scopes/Permissions:**
+    * **Document:** Document required scopes or permissions for each endpoint.
+    * **Examples:** Show examples of requests with different permission levels.
+
+* **See:** `security-and-governance.md` for security implementation details.
+
+## 7. Rate Limit Documentation
+
+* **Rate Limit Information:**
+    * **Limits:** Document rate limits (requests per minute/hour/day).
+    * **Headers:** Document rate limit headers in responses.
+        * `X-RateLimit-Limit`: Maximum requests allowed.
+        * `X-RateLimit-Remaining`: Remaining requests in current window.
+        * `X-RateLimit-Reset`: Time when rate limit resets.
+
+* **Rate Limit Strategies:**
+    * **Per-User:** Document per-user rate limits.
+    * **Per-IP:** Document per-IP rate limits.
+    * **Per-Endpoint:** Document endpoint-specific rate limits.
+
+* **Rate Limit Exceeded:**
+    * **Response:** Document 429 response format.
+    * **Retry-After:** Document `Retry-After` header usage.
+
+* **See:** `api-interface-and-streaming.md` for rate limiting implementation details.
+
+## 8. Documentation Maintenance
+
+* **Keep Updated:**
+    * **Sync with Code:** Ensure documentation matches actual API implementation.
+    * **Review Process:** Include documentation review in code review process.
+    * **Automated Checks:** Use tools to validate OpenAPI schema against implementation.
+
+* **Version Control:**
+    * **Track Changes:** Track documentation changes in version control.
+    * **Changelog:** Maintain API changelog documenting all changes.
+
+* **Accessibility:**
+    * **Public Access:** Make documentation publicly accessible (if applicable).
+    * **Search:** Provide search functionality in documentation.
+    * **Navigation:** Organize documentation with clear navigation structure.

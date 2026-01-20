@@ -1,0 +1,322 @@
+---
+description: "Simulation and property-based testing for agentic systems including edge case simulation and chaos testing"
+alwaysApply: false
+---
+
+## Mandate
+
+All agentic systems **MUST** implement simulation and property-based testing to validate system behavior under edge cases and adversarial conditions. Standard unit tests verify expected behavior, but agentic systems require testing of unpredictable scenarios, empty responses, timeouts, partial failures, and chaos conditions that occur in production. Senior engineers must implement comprehensive simulation testing to ensure system resilience.
+
+## 1. Property-Based Testing
+
+### Hypothesis Integration
+
+* **Mandate:** Use Hypothesis library for property-based testing of agentic systems.
+
+* **Property-Based Testing Benefits:**
+  * **Automatic Test Generation:** Hypothesis generates test cases automatically
+  * **Edge Case Discovery:** Finds edge cases that manual tests miss
+  * **Reproducible Tests:** Failed tests are reproducible with seed values
+  * **Comprehensive Coverage:** Tests wide range of inputs automatically
+
+* **Implementation:**
+  * **Strategies:** Define Hypothesis strategies for input generation
+  * **Properties:** Define properties that must hold for all inputs
+  * **Shrinking:** Use Hypothesis shrinking to find minimal failing examples
+  * **Integration:** Integrate with pytest for test execution
+
+**See:** `@examples_simulation_testing.py` for Hypothesis integration and property-based testing patterns.
+
+### Property Definitions
+
+* **Invariant Properties:**
+  * **Output Format:** Agent outputs must always match expected format
+  * **State Consistency:** LangGraph state must remain consistent
+  * **Error Handling:** All errors must be handled gracefully
+  * **Resource Cleanup:** Resources must be cleaned up after execution
+
+* **Behavioral Properties:**
+  * **Idempotency:** Repeated operations produce same results
+  * **Commutativity:** Order of operations doesn't affect final state
+  * **Associativity:** Grouping of operations doesn't affect results
+  * **Determinism:** Same inputs produce same outputs (when deterministic)
+
+* **Safety Properties:**
+  * **No Data Leakage:** Sensitive data never leaked in outputs
+  * **No Infinite Loops:** Execution always terminates
+  * **No Resource Exhaustion:** System never exhausts resources
+  * **No State Corruption:** State never corrupted by errors
+
+**See:** `@examples_simulation_testing.py` for property definition examples.
+
+### Strategy Configuration
+
+* **Input Strategies:**
+  * **Text Generation:** Generate various text inputs (empty, long, special characters)
+  * **State Generation:** Generate various LangGraph state configurations
+  * **Tool Response Generation:** Generate various tool response formats
+  * **Error Generation:** Generate various error conditions
+
+* **Strategy Customization:**
+  * **Constraints:** Add constraints to strategies (length, format, values)
+  * **Conditional Generation:** Generate inputs based on conditions
+  * **Composite Strategies:** Combine multiple strategies
+  * **Custom Strategies:** Define custom strategies for domain-specific inputs
+
+## 2. Edge Case Simulation
+
+### Empty Response Simulation
+
+* **Mandate:** Test agent behavior when tools return empty responses.
+
+* **Empty Response Scenarios:**
+  * **Empty String:** Tool returns empty string
+  * **None Value:** Tool returns None/null
+  * **Empty List:** Tool returns empty list/array
+  * **Empty Dictionary:** Tool returns empty dictionary/object
+
+* **Expected Behavior:**
+  * **Graceful Handling:** Agent handles empty responses without crashing
+  * **Error Messages:** Agent provides meaningful error messages
+  * **Fallback Behavior:** Agent uses fallback values or alternative sources
+  * **State Management:** Agent updates state appropriately
+
+**See:** `@examples_simulation_testing.py` for empty response simulation patterns.
+
+### Timeout Simulation
+
+* **Mandate:** Test agent behavior when operations timeout.
+
+* **Timeout Scenarios:**
+  * **LLM API Timeout:** LLM API call times out
+  * **Tool Execution Timeout:** Tool execution exceeds timeout
+  * **Database Query Timeout:** Database query times out
+  * **Network Timeout:** Network request times out
+
+* **Expected Behavior:**
+  * **Timeout Handling:** Agent handles timeouts gracefully
+  * **Retry Logic:** Agent retries with exponential backoff
+  * **Circuit Breaker:** Circuit breaker opens after repeated timeouts
+  * **User Communication:** Agent informs user of timeout
+
+**See:** `@examples_simulation_testing.py` for timeout simulation patterns.
+
+### Partial Failure Simulation
+
+* **Mandate:** Test agent behavior when some operations fail while others succeed.
+
+* **Partial Failure Scenarios:**
+  * **Multi-Agent Failures:** Some workers fail while others succeed
+  * **Tool Failures:** Some tools fail while others succeed
+  * **Parallel Request Failures:** Some parallel requests fail
+  * **State Update Failures:** Some state updates fail
+
+* **Expected Behavior:**
+  * **Partial Results:** Agent returns partial results when possible
+  * **Error Isolation:** Failures don't cascade to other operations
+  * **State Consistency:** State remains consistent despite failures
+  * **Recovery:** Agent recovers from partial failures
+
+**See:** `@examples_simulation_testing.py` for partial failure simulation patterns.
+
+### Invalid Input Simulation
+
+* **Mandate:** Test agent behavior with invalid or malformed inputs.
+
+* **Invalid Input Scenarios:**
+  * **Malformed JSON:** Invalid JSON in tool responses
+  * **Wrong Data Types:** Unexpected data types in inputs
+  * **Missing Required Fields:** Missing required fields in inputs
+  * **Invalid Format:** Inputs in wrong format
+
+* **Expected Behavior:**
+  * **Input Validation:** Agent validates inputs before processing
+  * **Error Messages:** Agent provides clear error messages
+  * **Graceful Rejection:** Agent rejects invalid inputs gracefully
+  * **No State Corruption:** Invalid inputs don't corrupt state
+
+## 3. Chaos Testing Patterns
+
+### Chaos Engineering Principles
+
+* **Mandate:** Implement chaos testing to validate system resilience under failure conditions.
+
+* **Chaos Testing Goals:**
+  * **Failure Injection:** Inject failures to test system behavior
+  * **Resilience Validation:** Validate system recovers from failures
+  * **Weakness Discovery:** Discover system weaknesses before production
+  * **Confidence Building:** Build confidence in system reliability
+
+* **Chaos Testing Types:**
+  * **Network Chaos:** Simulate network failures, latency, packet loss
+  * **Service Chaos:** Simulate service failures, slowdowns, errors
+  * **Resource Chaos:** Simulate resource exhaustion (CPU, memory, disk)
+  * **Data Chaos:** Simulate data corruption, missing data, invalid data
+
+**See:** `@examples_simulation_testing.py` for chaos testing implementation.
+
+### Failure Injection
+
+* **Failure Types:**
+  * **API Failures:** Inject API failures (5xx errors, timeouts)
+  * **Tool Failures:** Inject tool execution failures
+  * **State Failures:** Inject state update failures
+  * **Network Failures:** Inject network connection failures
+
+* **Injection Strategies:**
+  * **Random Injection:** Randomly inject failures
+  * **Targeted Injection:** Inject failures in specific components
+  * **Cascading Injection:** Inject failures that cascade
+  * **Recovery Testing:** Test recovery after failure injection
+
+* **Failure Configuration:**
+  * **Failure Rate:** Configure failure rate (e.g., 10% of requests)
+  * **Failure Duration:** Configure how long failures last
+  * **Failure Patterns:** Define failure patterns (burst, steady, random)
+  * **Recovery Patterns:** Define recovery patterns
+
+### Resilience Validation
+
+* **Validation Criteria:**
+  * **System Stability:** System remains stable under failures
+  * **Error Handling:** Errors are handled gracefully
+  * **Recovery Time:** System recovers within acceptable time
+  * **Data Integrity:** Data integrity maintained during failures
+
+* **Validation Metrics:**
+  * **Success Rate:** Track success rate during chaos testing
+  * **Error Rate:** Track error rate and error types
+  * **Recovery Time:** Measure time to recover from failures
+  * **State Consistency:** Validate state consistency during failures
+
+## 4. Mock Scenarios
+
+### Advanced Mocking
+
+* **Mandate:** Use advanced mocking for simulating complex scenarios.
+
+* **Mock Types:**
+  * **Tool Mocks:** Mock tool responses with various scenarios
+  * **LLM Mocks:** Mock LLM responses with various outputs
+  * **State Mocks:** Mock LangGraph state configurations
+  * **Error Mocks:** Mock error conditions
+
+* **Mock Configuration:**
+  * **Response Templates:** Define response templates for mocks
+  * **Scenario Definitions:** Define scenarios for mock behavior
+  * **Conditional Mocks:** Configure mocks based on conditions
+  * **Dynamic Mocks:** Generate mock responses dynamically
+
+**See:** `@examples_simulation_testing.py` for advanced mocking patterns.
+
+### Scenario Generation
+
+* **Scenario Types:**
+  * **Happy Path:** Normal successful execution
+  * **Error Paths:** Various error conditions
+  * **Edge Cases:** Boundary conditions and edge cases
+  * **Chaos Scenarios:** Failure and recovery scenarios
+
+* **Scenario Configuration:**
+  * **Scenario Templates:** Define scenario templates
+  * **Parameter Variation:** Vary parameters in scenarios
+  * **Combination Testing:** Test combinations of scenarios
+  * **Scenario Execution:** Execute scenarios in test suite
+
+### Mock Tool Response Generators
+
+* **Response Generation:**
+  * **Empty Responses:** Generate empty tool responses
+  * **Error Responses:** Generate error responses
+  * **Partial Responses:** Generate partial responses
+  * **Malformed Responses:** Generate malformed responses
+
+* **Generator Configuration:**
+  * **Response Types:** Configure response types to generate
+  * **Probability Distribution:** Configure probability of each type
+  * **Response Templates:** Define templates for responses
+  * **Dynamic Generation:** Generate responses based on context
+
+**See:** `@examples_simulation_testing.py` for mock tool response generators.
+
+## 5. Integration with Test Suite
+
+### Pytest Integration
+
+* **Mandate:** Integrate simulation testing with pytest test suite.
+
+* **Integration Patterns:**
+  * **Test Fixtures:** Use pytest fixtures for simulation setup
+  * **Test Parameters:** Use pytest parameters for scenario variation
+  * **Test Markers:** Use pytest markers for test categorization
+  * **Test Reporting:** Generate test reports with simulation results
+
+* **Test Organization:**
+  * **Test Files:** Organize simulation tests in dedicated files
+  * **Test Classes:** Group related simulation tests in classes
+  * **Test Functions:** Keep test functions focused and atomic
+  * **Test Data:** Separate test data from test logic
+
+**See:** `tests-and-validation.md` for pytest integration patterns.
+
+### CI/CD Integration
+
+* **Mandate:** Run simulation tests in CI/CD pipeline.
+
+* **Pipeline Configuration:**
+  * **Test Execution:** Execute simulation tests in CI/CD
+  * **Test Selection:** Select subset of tests for fast feedback
+  * **Test Parallelization:** Run tests in parallel for speed
+  * **Test Reporting:** Report test results in CI/CD
+
+* **Performance Considerations:**
+  * **Test Duration:** Keep simulation tests reasonably fast
+  * **Resource Usage:** Minimize resource usage in CI/CD
+  * **Test Isolation:** Ensure tests are isolated and independent
+  * **Test Stability:** Ensure tests are stable and reproducible
+
+### Test Coverage
+
+* **Coverage Requirements:**
+  * **Edge Case Coverage:** Cover all identified edge cases
+  * **Error Path Coverage:** Cover all error handling paths
+  * **State Coverage:** Cover various state configurations
+  * **Scenario Coverage:** Cover various execution scenarios
+
+* **Coverage Metrics:**
+  * **Code Coverage:** Track code coverage from simulation tests
+  * **Path Coverage:** Track path coverage through workflows
+  * **State Coverage:** Track state space coverage
+  * **Scenario Coverage:** Track scenario coverage
+
+**See:** `graph-traversal-testing.md` for path coverage patterns.
+
+## 6. Best Practices
+
+### Test Design
+
+* **Comprehensive Coverage:**
+  * **Edge Cases:** Test all edge cases and boundary conditions
+  * **Error Conditions:** Test all error conditions
+  * **Failure Modes:** Test all failure modes
+  * **Recovery Scenarios:** Test recovery from failures
+
+* **Test Clarity:**
+  * **Descriptive Names:** Use descriptive test names
+  * **Clear Assertions:** Use clear and specific assertions
+  * **Documentation:** Document test purpose and scenarios
+  * **Comments:** Add comments for complex test logic
+
+### Test Maintenance
+
+* **Regular Updates:**
+  * **Update Scenarios:** Update scenarios based on production issues
+  * **Add New Tests:** Add tests for new edge cases discovered
+  * **Remove Obsolete Tests:** Remove tests for deprecated features
+  * **Refactor Tests:** Refactor tests for maintainability
+
+* **Test Quality:**
+  * **Test Independence:** Ensure tests are independent
+  * **Test Determinism:** Ensure tests are deterministic
+  * **Test Speed:** Keep tests fast for quick feedback
+  * **Test Reliability:** Ensure tests are reliable and stable

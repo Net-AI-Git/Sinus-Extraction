@@ -1,0 +1,92 @@
+---
+globs: **/api/**/*.py, **/routes/**/*.py
+alwaysApply: false
+---
+
+## 1. Streaming First
+
+* **The Reality:** LLM Agents are high-latency systems. Waiting for a full response provides bad UX.
+
+* **Mandate:** All Agentic Endpoints must support **Token Streaming**.
+
+* **Protocol:** Use **Server-Sent Events (SSE)** or **WebSockets**. Standard REST (JSON response) is allowed only for background batch jobs.
+
+
+## 2. Framework Choice
+
+* **FastAPI:** Use `FastAPI` as the standard server framework due to its native Async support and Pydantic integration.
+
+* **Async Generators:** Endpoints must be implemented as `async def` generators that `yield` chunks of data.
+
+
+## 3. Standardized Response Format
+
+* **Event Stream Structure:** Do not just stream text. Stream structured events:
+
+    * `event: token` -> data: "Hello"
+
+    * `event: tool_start` -> data: {"tool": "search", "input": "query"}
+
+    * `event: tool_end` -> data: {"result": "found"}
+
+    * `event: error` -> data: "message"
+
+* **LangChain Integration:** Use `astream_events` (v2) from LangChain to automatically capture internal steps and stream them to the client.
+
+
+## 4. Timeouts & Keep-Alives
+
+* **Configuration:** Set aggressive timeouts for HTTP connections but generous timeouts for the Agent execution logic.
+
+* **Heartbeats:** For long-running agent tasks (minutes), send "processing" or "heartbeat" events to keep the client connection alive.
+
+
+## 5. Rate Limiting & Throttling
+
+* **Mandate:** All API endpoints must implement rate limiting to prevent abuse and ensure fair resource usage.
+
+* **Token Bucket Algorithm:** Use token bucket algorithm for rate limiting.
+    * **Tokens:** Each request consumes a token. Tokens are added to the bucket at a fixed rate.
+    * **Burst Handling:** Allow bursts up to bucket capacity, then enforce steady rate.
+    * **Implementation:** Use libraries like `slowapi` or `fastapi-limiter` for FastAPI.
+
+* **Leaky Bucket Algorithm (Alternative):** Use leaky bucket for strict rate limiting without burst allowance.
+    * **Use Case:** When strict rate limiting is required without burst tolerance.
+
+* **Rate Limit Strategies:**
+    * **Per-User:** Enforce rate limits per authenticated user (preferred for authenticated endpoints).
+    * **Per-IP:** Enforce rate limits per IP address (for unauthenticated endpoints or as additional layer).
+    * **Per-Endpoint:** Configure different rate limits for different endpoints based on resource usage.
+    * **Global:** Enforce global rate limits across all users (for system protection).
+
+* **Rate Limit Headers:** Include rate limit information in response headers:
+    * `X-RateLimit-Limit`: Maximum requests allowed in the time window.
+    * `X-RateLimit-Remaining`: Remaining requests in current window.
+    * `X-RateLimit-Reset`: Unix timestamp when rate limit resets.
+    * `Retry-After`: Seconds to wait before retrying (when rate limit exceeded).
+
+* **Quota Management:**
+    * **Tiered Limits:** Implement different rate limits for different user tiers (free, premium, enterprise).
+    * **Dynamic Adjustment:** Allow dynamic quota adjustment based on system load or user behavior.
+    * **Quota Tracking:** Track quota usage in database or Redis for persistence across restarts.
+
+* **Burst Handling:**
+    * **Allow Bursts:** Use token bucket to allow short bursts above average rate.
+    * **Burst Size:** Configure maximum burst size based on endpoint characteristics.
+    * **Burst Recovery:** Gradually recover from burst to steady rate.
+
+* **Rate Limit Exceeded Response:**
+    * **HTTP 429:** Return 429 Too Many Requests when rate limit exceeded.
+    * **Error Message:** Include clear error message explaining rate limit and when it resets.
+    * **Retry-After Header:** Include `Retry-After` header indicating when to retry.
+
+* **FastAPI Middleware Integration:**
+    * **Middleware:** Implement rate limiting as FastAPI middleware to apply globally or per-route.
+    * **Dependency Injection:** Use FastAPI dependencies for per-endpoint rate limiting.
+    * **Async Support:** Ensure rate limiting middleware is async-compatible.
+
+* **Storage Backend:**
+    * **Redis:** Use Redis for distributed rate limiting (recommended for multi-instance deployments).
+    * **In-Memory:** Use in-memory storage for single-instance deployments (simpler but not distributed).
+
+* **See:** `security-governance-and-observability.md` for governance-level rate limiting requirements. `api-documentation-standards.md` for documenting rate limits in API documentation.
