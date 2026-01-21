@@ -26,6 +26,93 @@ logger = logging.getLogger(__name__)
 log_path = r"c:\Users\NETANIT\Desktop\work\Sinus-Extraction\.cursor\debug.log"
 
 
+def save_array(
+    array: np.ndarray,
+    filename: str
+) -> None:
+    """
+    Save a numpy array to NPY file format.
+    
+    Why: NPY format preserves exact numerical values without loss, enabling
+    precise training on spectrogram data. This function provides a standardized
+    way to save arrays with validation to ensure data integrity.
+    
+    What: Validates the array (checks for NaN, Inf, dtype, shape), ensures
+    the output directory exists, and saves the array using np.save().
+    Logs errors with full context for debugging.
+    
+    Args:
+        array: Numpy array to save. Must be a valid numpy array with finite values.
+        filename: Output filename (including path). Should end with .npy.
+    
+    Raises:
+        ValueError: If array contains NaN or Inf values, or if array is invalid.
+        IOError: If file cannot be written or directory cannot be created.
+    """
+    if not isinstance(array, np.ndarray):
+        raise ValueError(
+            f"Input must be numpy array, got {type(array).__name__}."
+        )
+    
+    if array.size == 0:
+        raise ValueError("Cannot save empty array.")
+    
+    if np.any(~np.isfinite(array)):
+        raise ValueError(
+            "Array contains NaN or Inf values. Cannot save invalid data."
+        )
+    
+    _ensure_directory_exists(filename)
+    _write_array_to_file(array, filename)
+
+
+def _ensure_directory_exists(filename: str) -> None:
+    """
+    Ensure the output directory exists before saving.
+    
+    Why: Prevents IOError when trying to save to non-existent directory.
+    Separated for clarity and testability.
+    
+    What: Extracts directory path from filename and creates it if missing.
+    
+    Args:
+        filename: Full file path including directory.
+    
+    Raises:
+        OSError: If directory cannot be created.
+    """
+    dir_path = os.path.dirname(filename)
+    if dir_path and not os.path.exists(dir_path):
+        os.makedirs(dir_path, exist_ok=True)
+
+
+def _write_array_to_file(array: np.ndarray, filename: str) -> None:
+    """
+    Write validated array to NPY file.
+    
+    Why: Separates file writing logic for clarity and error handling.
+    This function handles the actual file I/O operation.
+    
+    What: Saves array using np.save() and logs success or failure.
+    
+    Args:
+        array: Validated numpy array to save.
+        filename: Output filename path.
+    
+    Raises:
+        IOError: If file cannot be written.
+    """
+    try:
+        np.save(filename, array)
+        logger.debug(f"Saved array to {filename}, shape: {array.shape}, dtype: {array.dtype}")
+    except Exception as e:
+        logger.error(
+            f"Failed to save array to {filename}: {str(e)}. "
+            f"Shape: {array.shape}, dtype: {array.dtype}"
+        )
+        raise IOError(f"Cannot write array to file {filename}: {str(e)}") from e
+
+
 def save_image(
     image: np.ndarray,
     filename: str,

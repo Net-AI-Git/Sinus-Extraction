@@ -73,15 +73,17 @@ def _setup_hierarchical_directories(
     base_output_dir: str,
     freq_range: Tuple[float, float],
     scenario_name: str
-) -> Tuple[str, str]:
+) -> Tuple[str, str, str, str]:
     """
     Create hierarchical output directories for frequency range and scenario.
     
     Why: Organizes output data hierarchically by frequency range and signal
-    scenario, enabling organized dataset structure and easy filtering.
+    scenario, enabling organized dataset structure and easy filtering. Creates
+    directories for both image (JPG) and array (NPY) formats.
     
-    What: Creates directory structure: base_output_dir/freq_X_Y/scenario_name/images/
-    and masks/. Uses exist_ok=True to avoid errors if directories already exist.
+    What: Creates directory structure: base_output_dir/freq_X_Y/scenario_name/
+    with subdirectories: images/, masks/, arrays/stft/, arrays/masks/.
+    Uses exist_ok=True to avoid errors if directories already exist.
     
     Args:
         base_output_dir: Base output directory path.
@@ -89,7 +91,8 @@ def _setup_hierarchical_directories(
         scenario_name: Signal scenario name.
     
     Returns:
-        Tuple[str, str]: A tuple containing (images_dir, masks_dir) paths.
+        Tuple[str, str, str, str]: A tuple containing (images_dir, masks_dir,
+            stft_arrays_dir, mask_arrays_dir) paths.
     
     Raises:
         OSError: If directories cannot be created.
@@ -99,9 +102,68 @@ def _setup_hierarchical_directories(
     scenario_dir = os.path.join(base_output_dir, freq_dir_name, scenario_name)
     images_dir = os.path.join(scenario_dir, 'images')
     masks_dir = os.path.join(scenario_dir, 'masks')
+    arrays_dir = os.path.join(scenario_dir, 'arrays')
+    stft_arrays_dir = os.path.join(arrays_dir, 'stft')
+    mask_arrays_dir = os.path.join(arrays_dir, 'masks')
+    
     os.makedirs(images_dir, exist_ok=True)
     os.makedirs(masks_dir, exist_ok=True)
-    return images_dir, masks_dir
+    os.makedirs(stft_arrays_dir, exist_ok=True)
+    os.makedirs(mask_arrays_dir, exist_ok=True)
+    
+    return images_dir, masks_dir, stft_arrays_dir, mask_arrays_dir
+
+
+def _save_sample_dual_format(
+    sample: 'Sample',
+    unique_id: str,
+    images_dir: str,
+    masks_dir: str,
+    stft_arrays_dir: str,
+    mask_arrays_dir: str,
+    config: SyntheticDataConfig
+) -> None:
+    """
+    Save sample in both JPG (images) and NPY (arrays) formats.
+    
+    Why: Enables dual format storage for backward compatibility (JPG) and
+    precise training (NPY). This function encapsulates the saving logic
+    to avoid duplication across multiple generation functions.
+    
+    What: Saves STFT and binary mask as both JPG images and NPY arrays
+    using the same UUID for matching. JPG files use {uuid}.jpg naming,
+    NPY files use {uuid}.npy naming.
+    
+    Args:
+        sample: Sample object containing STFT and binary_mask data.
+        unique_id: UUID string for file naming.
+        images_dir: Directory for STFT JPG images.
+        masks_dir: Directory for mask JPG images.
+        stft_arrays_dir: Directory for STFT NPY arrays.
+        mask_arrays_dir: Directory for mask NPY arrays.
+        config: SyntheticDataConfig object.
+    
+    Raises:
+        IOError: If files cannot be written.
+    """
+    image_jpg_path = os.path.join(images_dir, f'{unique_id}.jpg')
+    mask_jpg_path = os.path.join(masks_dir, f'{unique_id}.jpg')
+    stft_npy_path = os.path.join(stft_arrays_dir, f'{unique_id}.npy')
+    mask_npy_path = os.path.join(mask_arrays_dir, f'{unique_id}.npy')
+    
+    save_image(sample.stft, image_jpg_path, config, cmap='viridis', save_raw=True)
+    save_image(
+        sample.binary_mask,
+        mask_jpg_path,
+        config,
+        cmap='gray',
+        title='Binary Mask',
+        save_raw=True
+    )
+    
+    from .visualization import save_array
+    save_array(sample.stft, stft_npy_path)
+    save_array(sample.binary_mask.astype(np.float32), mask_npy_path)
 
 
 def generate_samples_by_scenario(
@@ -142,7 +204,7 @@ def generate_samples_by_scenario(
     if base_output_dir is None:
         base_output_dir = config.output_dir
     
-    images_dir, masks_dir = _setup_hierarchical_directories(
+    images_dir, masks_dir, stft_arrays_dir, mask_arrays_dir = _setup_hierarchical_directories(
         base_output_dir, freq_range, scenario_name
     )
     rng = np.random.default_rng(config.seed)
@@ -172,17 +234,14 @@ def generate_samples_by_scenario(
             freq_range=freq_range
         )
         unique_id = str(uuid.uuid4())
-        base_name = f'sample_{unique_id}.jpg'
-        image_filename = os.path.join(images_dir, base_name)
-        mask_filename = os.path.join(masks_dir, base_name)
-        save_image(sample.stft, image_filename, config, cmap='viridis', save_raw=True)
-        save_image(
-            sample.binary_mask,
-            mask_filename,
-            config,
-            cmap='gray',
-            title='Binary Mask',
-            save_raw=True
+        _save_sample_dual_format(
+            sample,
+            unique_id,
+            images_dir,
+            masks_dir,
+            stft_arrays_dir,
+            mask_arrays_dir,
+            config
         )
         
         if (i + 1) % 1000 == 0:
@@ -280,7 +339,7 @@ def _generate_and_save_single_sample(
     import numpy as np
     from synthetic_data.config import SyntheticDataConfig
     from synthetic_data.sample_generator import generate_sample
-    from synthetic_data.visualization import save_image
+    from synthetic_data.visualization import save_image, save_array
     
     try:
         # Reconstruct config from dict
@@ -302,30 +361,33 @@ def _generate_and_save_single_sample(
         
         # Generate unique ID and save
         unique_id = str(uuid.uuid4())
-        base_name = f'sample_{unique_id}.jpg'
-        image_filename = os.path.join(task_params['images_dir'], base_name)
-        mask_filename = os.path.join(task_params['masks_dir'], base_name)
+        image_jpg_path = os.path.join(task_params['images_dir'], f'{unique_id}.jpg')
+        mask_jpg_path = os.path.join(task_params['masks_dir'], f'{unique_id}.jpg')
+        stft_npy_path = os.path.join(task_params['stft_arrays_dir'], f'{unique_id}.npy')
+        mask_npy_path = os.path.join(task_params['mask_arrays_dir'], f'{unique_id}.npy')
         
         save_image(
             sample.stft,
-            image_filename,
+            image_jpg_path,
             config,
             cmap='viridis',
             save_raw=True
         )
         save_image(
             sample.binary_mask,
-            mask_filename,
+            mask_jpg_path,
             config,
             cmap='gray',
             title='Binary Mask',
             save_raw=True
         )
+        save_array(sample.stft, stft_npy_path)
+        save_array(sample.binary_mask.astype(np.float32), mask_npy_path)
         
         return (
             'success',
             f"Sample {task_params['sample_index']}/{task_params['total_samples']}: "
-            f"{task_params['combination_info']} - {base_name}",
+            f"{task_params['combination_info']} - {unique_id}",
             task_params['sample_index'],
             ''
         )
@@ -413,7 +475,7 @@ def generate_diverse_samples(
         # Iterate over all scenarios in fixed order
         for scenario in scenarios:
             # Setup hierarchical directories for this combination
-            images_dir, masks_dir = _setup_hierarchical_directories(
+            images_dir, masks_dir, stft_arrays_dir, mask_arrays_dir = _setup_hierarchical_directories(
                 base_output_dir,
                 freq_range,
                 scenario
@@ -447,6 +509,8 @@ def generate_diverse_samples(
                     'freq_range': freq_range,
                     'images_dir': images_dir,
                     'masks_dir': masks_dir,
+                    'stft_arrays_dir': stft_arrays_dir,
+                    'mask_arrays_dir': mask_arrays_dir,
                     'sample_index': sample_index,
                     'total_samples': total_samples,
                     'combination_info': combination_info
@@ -504,7 +568,8 @@ def _generate_multiple_samples_for_directory(
     
     Args:
         task_params: Dictionary containing: freq_range, scenario, samples_count,
-            config_dict, base_seed, images_dir, masks_dir, combination_info.
+            config_dict, base_seed, images_dir, masks_dir, stft_arrays_dir,
+            mask_arrays_dir, combination_info.
     
     Returns:
         Dict[str, Any]: Statistics dictionary with keys: success_count, error_count,
@@ -521,7 +586,7 @@ def _generate_multiple_samples_for_directory(
     warnings.filterwarnings('ignore', category=RuntimeWarning, module='runpy')
     from synthetic_data.config import SyntheticDataConfig
     from synthetic_data.sample_generator import generate_sample
-    from synthetic_data.visualization import save_image
+    from synthetic_data.visualization import save_image, save_array
     
     # #region agent log
     try:
@@ -553,6 +618,8 @@ def _generate_multiple_samples_for_directory(
     base_seed = task_params['base_seed']
     images_dir = task_params['images_dir']
     masks_dir = task_params['masks_dir']
+    stft_arrays_dir = task_params['stft_arrays_dir']
+    mask_arrays_dir = task_params['mask_arrays_dir']
     combination_info = task_params['combination_info']
     
     # Reconstruct config from dict
@@ -637,25 +704,28 @@ def _generate_multiple_samples_for_directory(
             
             # Generate unique ID and save
             unique_id = str(uuid.uuid4())
-            base_name = f'sample_{unique_id}.jpg'
-            image_filename = os.path.join(images_dir, base_name)
-            mask_filename = os.path.join(masks_dir, base_name)
+            image_jpg_path = os.path.join(images_dir, f'{unique_id}.jpg')
+            mask_jpg_path = os.path.join(masks_dir, f'{unique_id}.jpg')
+            stft_npy_path = os.path.join(stft_arrays_dir, f'{unique_id}.npy')
+            mask_npy_path = os.path.join(mask_arrays_dir, f'{unique_id}.npy')
             
             save_image(
                 sample.stft,
-                image_filename,
+                image_jpg_path,
                 config,
                 cmap='viridis',
                 save_raw=True
             )
             save_image(
                 sample.binary_mask,
-                mask_filename,
+                mask_jpg_path,
                 config,
                 cmap='gray',
                 title='Binary Mask',
                 save_raw=True
             )
+            save_array(sample.stft, stft_npy_path)
+            save_array(sample.binary_mask.astype(np.float32), mask_npy_path)
             
             success_count += 1
             
@@ -671,7 +741,7 @@ def _generate_multiple_samples_for_directory(
                         "sample_index": i + 1,
                         "total_samples": samples_count,
                         "success_count": success_count,
-                        "base_name": base_name
+                        "unique_id": unique_id
                     },
                     "timestamp": int(time.time() * 1000)
                 }
@@ -863,7 +933,7 @@ def generate_balanced_dataset(
     for freq_range in config.freq_ranges:
         for scenario in scenarios:
             # Setup hierarchical directories
-            images_dir, masks_dir = _setup_hierarchical_directories(
+            images_dir, masks_dir, stft_arrays_dir, mask_arrays_dir = _setup_hierarchical_directories(
                 base_output_dir,
                 freq_range,
                 scenario
@@ -882,6 +952,8 @@ def generate_balanced_dataset(
                 'base_seed': task_seed,
                 'images_dir': images_dir,
                 'masks_dir': masks_dir,
+                'stft_arrays_dir': stft_arrays_dir,
+                'mask_arrays_dir': mask_arrays_dir,
                 'combination_info': combination_info
             }
             
