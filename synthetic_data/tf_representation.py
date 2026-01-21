@@ -75,7 +75,7 @@ def ifs_to_ideal_tf(
 
 def generate_binary_mask(
     ideal_tf: np.ndarray,
-    threshold: float = 0.5
+    threshold: float = 0.7
 ) -> np.ndarray:
     """
     Generate binary mask from ideal TF representation.
@@ -91,7 +91,7 @@ def generate_binary_mask(
     Args:
         ideal_tf: Ideal TF representation, shape [n_freq_bins, n_time_bins],
             values in [0, 1].
-        threshold: Threshold value for binarization. Default 0.5.
+        threshold: Threshold value for binarization. Default 0.7.
             Values > threshold become 1, values <= threshold become 0.
     
     Returns:

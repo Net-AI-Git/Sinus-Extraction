@@ -151,7 +151,7 @@ def _save_sample_dual_format(
     stft_npy_path = os.path.join(stft_arrays_dir, f'{unique_id}.npy')
     mask_npy_path = os.path.join(mask_arrays_dir, f'{unique_id}.npy')
     
-    save_image(sample.stft, image_jpg_path, config, cmap='viridis', save_raw=True)
+    save_image(sample.stft, image_jpg_path, config, cmap='hot', save_raw=True)
     save_image(
         sample.binary_mask,
         mask_jpg_path,
@@ -370,7 +370,7 @@ def _generate_and_save_single_sample(
             sample.stft,
             image_jpg_path,
             config,
-            cmap='viridis',
+            cmap='yellow_turquoise_red',
             save_raw=True
         )
         save_image(
@@ -713,7 +713,7 @@ def _generate_multiple_samples_for_directory(
                 sample.stft,
                 image_jpg_path,
                 config,
-                cmap='viridis',
+                cmap='yellow_turquoise_red',
                 save_raw=True
             )
             save_image(

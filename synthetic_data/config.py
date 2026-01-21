@@ -57,8 +57,8 @@ class SyntheticDataConfig(BaseSettings):
         n_time_bins: Number of time bins in output spectrogram. Default 8000
             matches the number of samples.
         tf_sigma_range: Range for Gaussian blur sigma in TF representation.
-            Tuple of (min, max) values. Default (0.5, 2.0) provides reasonable
-            blur for ideal TF mask generation.
+            Tuple of (min, max) values. Default (0.05, 0.15) provides very minimal
+            blur to match STFT resolution without excessive smearing.
         output_dir: Output directory for generated samples. Default './data'.
         seed: Random seed for reproducibility. Default 42.
     """
@@ -103,7 +103,7 @@ class SyntheticDataConfig(BaseSettings):
         description="Number of time bins in output spectrogram"
     )
     tf_sigma_range: Tuple[float, float] = Field(
-        default=(0.5, 2.0),
+        default=(0.05, 0.15),
         description="Range for Gaussian blur sigma in TF representation (min, max)"
     )
     output_dir: str = Field(

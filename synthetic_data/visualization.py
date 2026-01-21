@@ -17,6 +17,7 @@ import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import logging
 
 from .config import SyntheticDataConfig
@@ -24,6 +25,39 @@ from .sample_generator import Sample, generate_sample
 
 logger = logging.getLogger(__name__)
 log_path = r"c:\Users\NETANIT\Desktop\work\Sinus-Extraction\.cursor\debug.log"
+
+
+def _create_yellow_turquoise_red_colormap() -> LinearSegmentedColormap:
+    """
+    Create custom colormap: yellow (weak) → turquoise → red (strong).
+    
+    Why: Provides a colormap that represents signal intensity from weak
+    (yellow) to strong (red), with turquoise as intermediate value.
+    This matches the user's requirement for spectrogram visualization
+    based on magnitude intensity.
+    
+    What: Creates a LinearSegmentedColormap with color transitions:
+    yellow (low intensity) → turquoise → red (high intensity).
+    
+    Returns:
+        LinearSegmentedColormap: Custom colormap object.
+    """
+    colors = [
+        (1.0, 1.0, 0.0),    # Yellow (weak)
+        (0.0, 0.8, 0.8),    # Turquoise (middle)
+        (1.0, 0.0, 0.0)     # Red (strong)
+    ]
+    n_bins = 256
+    return LinearSegmentedColormap.from_list(
+        'yellow_turquoise_red',
+        colors,
+        N=n_bins
+    )
+
+
+# Register the custom colormap globally
+_yellow_turquoise_red_cmap = _create_yellow_turquoise_red_colormap()
+plt.colormaps.register(_yellow_turquoise_red_cmap, name='yellow_turquoise_red')
 
 
 def save_array(
@@ -117,7 +151,7 @@ def save_image(
     image: np.ndarray,
     filename: str,
     config: SyntheticDataConfig,
-    cmap: str = 'viridis',
+    cmap: str = 'yellow_turquoise_red',
     title: str = 'STFT Magnitude',
     save_raw: bool = True
 ) -> None:
@@ -138,8 +172,10 @@ def save_image(
         image: Image array to save, shape [n_freq_bins, n_time_bins].
         filename: Output filename (including path).
         config: SyntheticDataConfig object with duration and fmax.
-        cmap: Colormap name. Default 'viridis' for spectrograms, use 'gray'
-            for binary masks.
+        cmap: Colormap name. Default 'yellow_turquoise_red' for spectrograms.
+            The colormap scales dynamically: yellow maps to minimum value, red maps
+            to maximum value, with turquoise at intermediate percentage.
+            Use 'gray' for binary masks.
         title: Plot title. Default 'STFT Magnitude'. Only used if save_raw=False.
         save_raw: If True, saves only the raw image without axes, labels, or
             colorbar. If False, includes all formatting elements. Default True.
@@ -154,6 +190,10 @@ def save_image(
     except: pass
     # #endregion
     
+    # Calculate min and max values for dynamic colormap scaling
+    vmin = float(np.nanmin(image))
+    vmax = float(np.nanmax(image))
+    
     if save_raw:
         # Save raw image without any formatting
         fig, ax = plt.subplots(figsize=(10, 8))
@@ -161,7 +201,9 @@ def save_image(
             image,
             aspect='auto',
             cmap=cmap,
-            origin='lower'
+            origin='lower',
+            vmin=vmin,
+            vmax=vmax
         )
         ax.axis('off')  # Remove all axes
         plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Remove margins
@@ -173,7 +215,9 @@ def save_image(
             aspect='auto',
             cmap=cmap,
             origin='lower',
-            extent=[0, config.duration, 0, config.fmax]
+            extent=[0, config.duration, 0, config.fmax],
+            vmin=vmin,
+            vmax=vmax
         )
         plt.colorbar(label='Magnitude')
         plt.xlabel('Time [s]')
@@ -235,9 +279,9 @@ def _plot_stft_spectrogram(
     Why: Separates STFT plotting logic for clarity and reusability.
     This function handles the specific formatting for STFT spectrograms.
     
-    What: Displays the STFT spectrogram with viridis colormap, adds axis
-    labels, title, and colorbar. Configures the extent to match time and
-    frequency ranges.
+    What: Displays the STFT spectrogram with blue_green_yellow_red colormap
+    (blue=weak → green → yellow → red=strong), adds axis labels, title, and
+    colorbar. Configures the extent to match time and frequency ranges.
     
     Args:
         ax: Matplotlib axis to plot on.
@@ -245,12 +289,18 @@ def _plot_stft_spectrogram(
         index: Sample index for title.
         config: SyntheticDataConfig object with duration and fmax.
     """
+    # Calculate min and max values for dynamic colormap scaling
+    vmin = float(np.nanmin(sample.stft))
+    vmax = float(np.nanmax(sample.stft))
+    
     im = ax.imshow(
         sample.stft,
         aspect='auto',
-        cmap='viridis',
+        cmap='yellow_turquoise_red',
         origin='lower',
-        extent=[0, config.duration, 0, config.fmax]
+        extent=[0, config.duration, 0, config.fmax],
+        vmin=vmin,
+        vmax=vmax
     )
     ax.set_xlabel('Time [s]')
     ax.set_ylabel('Frequency [Hz]')
