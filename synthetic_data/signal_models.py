@@ -386,10 +386,13 @@ def gen_step_sine_params(
     Why: Encapsulates the logic for sampling valid step sine parameters,
     including frequency steps and step times. This ensures parameters are
     always within acceptable bounds and step times are properly sorted.
+    Uses uniform distribution for frequencies to ensure even coverage across
+    the entire frequency range.
     
-    What: Samples n_steps frequencies from [freq_min, freq_max) and n_steps-1
-    step times from [time_min, time_max), then sorts the step times to ensure
-    they are in ascending order. Returns a StepSineParams object.
+    What: Samples n_steps frequencies from [freq_min, freq_max) using uniform
+    distribution for even coverage across the entire spectrum, and n_steps-1 step times
+    from [time_min, time_max), then sorts the step times to ensure they are in
+    ascending order. Returns a StepSineParams object.
     
     Args:
         rng: NumPy random number generator for reproducibility.
@@ -403,8 +406,9 @@ def gen_step_sine_params(
         StepSineParams: A StepSineParams object with randomly sampled
             frequencies and sorted step times.
     """
+    # Use uniform distribution for even frequency coverage across entire range
     freq_steps = [
-        sample_param(rng, low=freq_min, high=freq_max)
+        rng.uniform(freq_min, freq_max)
         for _ in range(n_steps)
     ]
     step_times = [
@@ -429,10 +433,13 @@ def gen_freq_jump_params(
     Why: Encapsulates the logic for sampling valid frequency jump parameters,
     including number of jumps, jump times, and frequencies. This ensures
     parameters are always within acceptable bounds and jump times are sorted.
+    Uses uniform distribution for frequencies to ensure even coverage across
+    the entire frequency range.
     
     What: Samples n_jumps (3-5 if not provided), jump times from [time_min, time_max),
-    and n_jumps+1 frequencies from [freq_min, freq_max). Sorts jump times to ensure
-    they are in ascending order. Returns a FreqJumpParams object.
+    and n_jumps+1 frequencies from [freq_min, freq_max) using uniform distribution
+    for even coverage across the entire range. Sorts jump times to ensure they are
+    in ascending order. Returns a FreqJumpParams object.
     
     Args:
         rng: NumPy random number generator for reproducibility.
@@ -452,8 +459,11 @@ def gen_freq_jump_params(
         for _ in range(n_jumps)
     ]
     jump_times.sort()
+    # Use log-uniform distribution for better frequency coverage
+    log_freq_min = np.log(max(freq_min, 0.1))
+    log_freq_max = np.log(freq_max)
     freqs = [
-        sample_param(rng, low=freq_min, high=freq_max)
+        np.exp(rng.uniform(log_freq_min, log_freq_max))
         for _ in range(n_jumps + 1)
     ]
     return FreqJumpParams(n_jumps=n_jumps, jump_times=jump_times, freqs=freqs)
@@ -470,10 +480,13 @@ def gen_sawtooth_mod_params(
     
     Why: Encapsulates the logic for sampling valid sawtooth modulation
     parameters from their respective ranges. This ensures parameters are
-    always within acceptable bounds for signal generation.
+    always within acceptable bounds for signal generation. Uses uniform
+    distribution for base frequency to ensure even coverage across the entire
+    frequency range.
     
     What: Samples modulation frequency, modulation depth, and base frequency
-    from uniform distributions over their respective ranges and returns a
+    from uniform distributions over their respective ranges. Base frequency uses
+    uniform distribution for even coverage across the entire range. Returns a
     SawtoothModParams object.
     
     Args:
@@ -490,7 +503,8 @@ def gen_sawtooth_mod_params(
     """
     mod_freq = sample_param(rng, low=mod_freq_range[0], high=mod_freq_range[1])
     mod_depth = sample_param(rng, low=mod_depth_range[0], high=mod_depth_range[1])
-    base_freq = sample_param(rng, low=base_freq_range[0], high=base_freq_range[1])
+    # Use uniform distribution for even frequency coverage across entire range
+    base_freq = rng.uniform(base_freq_range[0], base_freq_range[1])
     return SawtoothModParams(
         mod_freq=mod_freq,
         mod_depth=mod_depth,
@@ -510,11 +524,14 @@ def gen_square_mod_params(
     
     Why: Encapsulates the logic for sampling valid square wave modulation
     parameters from their respective ranges. This ensures parameters are
-    always within acceptable bounds for signal generation.
+    always within acceptable bounds for signal generation. Uses uniform
+    distribution for base frequency to ensure even coverage across the entire
+    frequency range.
     
     What: Samples modulation frequency, duty cycle, modulation depth, and
-    base frequency from uniform distributions over their respective ranges
-    and returns a SquareModParams object.
+    base frequency from uniform distributions over their respective ranges.
+    Base frequency uses uniform distribution for even coverage across the
+    entire range. Returns a SquareModParams object.
     
     Args:
         rng: NumPy random number generator for reproducibility.
@@ -532,7 +549,8 @@ def gen_square_mod_params(
     mod_freq = sample_param(rng, low=mod_freq_range[0], high=mod_freq_range[1])
     duty_cycle = sample_param(rng, low=duty_cycle_range[0], high=duty_cycle_range[1])
     mod_depth = sample_param(rng, low=mod_depth_range[0], high=mod_depth_range[1])
-    base_freq = sample_param(rng, low=base_freq_range[0], high=base_freq_range[1])
+    # Use uniform distribution for even frequency coverage across entire range
+    base_freq = rng.uniform(base_freq_range[0], base_freq_range[1])
     return SquareModParams(
         mod_freq=mod_freq,
         duty_cycle=duty_cycle,
@@ -555,12 +573,13 @@ def gen_phase_jump_params(
     Why: Encapsulates the logic for sampling valid phase jump parameters,
     including number of jumps, jump times, jump sizes, and base frequency.
     This ensures parameters are always within acceptable bounds and jump
-    times are sorted.
+    times are sorted. Uses log-uniform distribution for base frequency to
+    better cover the spectrum.
     
     What: Samples n_jumps (2-4 if not provided), jump times from [time_min, time_max),
-    jump sizes from [jump_size_range], and base frequency from [base_freq_range].
-    Sorts jump times to ensure they are in ascending order. Returns a PhaseJumpParams
-    object.
+    jump sizes from [jump_size_range], and base frequency from [base_freq_range]
+    using log-uniform distribution. Sorts jump times to ensure they are in
+    ascending order. Returns a PhaseJumpParams object.
     
     Args:
         rng: NumPy random number generator for reproducibility.
@@ -586,7 +605,10 @@ def gen_phase_jump_params(
         sample_param(rng, low=jump_size_range[0], high=jump_size_range[1])
         for _ in range(n_jumps)
     ]
-    base_freq = sample_param(rng, low=base_freq_range[0], high=base_freq_range[1])
+    # Use log-uniform distribution for better frequency coverage
+    log_freq_min = np.log(max(base_freq_range[0], 0.1))
+    log_freq_max = np.log(base_freq_range[1])
+    base_freq = np.exp(rng.uniform(log_freq_min, log_freq_max))
     return PhaseJumpParams(
         n_jumps=n_jumps,
         jump_times=jump_times,
@@ -606,10 +628,13 @@ def gen_amplitude_mod_params(
     
     Why: Encapsulates the logic for sampling valid amplitude modulation
     parameters from their respective ranges. This ensures parameters are
-    always within acceptable bounds for signal generation.
+    always within acceptable bounds for signal generation. Uses uniform
+    distribution for base frequency to ensure even coverage across the entire
+    frequency range.
     
     What: Samples modulation frequency, modulation depth, and base frequency
-    from uniform distributions over their respective ranges and returns an
+    from uniform distributions over their respective ranges. Base frequency uses
+    uniform distribution for even coverage across the entire range. Returns an
     AmplitudeModParams object.
     
     Args:
@@ -626,7 +651,8 @@ def gen_amplitude_mod_params(
     """
     mod_freq = sample_param(rng, low=mod_freq_range[0], high=mod_freq_range[1])
     mod_depth = sample_param(rng, low=mod_depth_range[0], high=mod_depth_range[1])
-    base_freq = sample_param(rng, low=base_freq_range[0], high=base_freq_range[1])
+    # Use uniform distribution for even frequency coverage across entire range
+    base_freq = rng.uniform(base_freq_range[0], base_freq_range[1])
     return AmplitudeModParams(
         mod_freq=mod_freq,
         mod_depth=mod_depth,

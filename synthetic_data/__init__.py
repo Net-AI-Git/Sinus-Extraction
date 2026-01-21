@@ -17,9 +17,7 @@ visualization. The main entry point is main.py for batch generation.
 from .config import SyntheticDataConfig
 from .sample_generator import Sample, generate_sample
 from .main import (
-    generate_samples_by_scenario,
-    generate_all_scenarios,
-    generate_diverse_samples
+    generate_samples_by_scenario
 )
 from .signal_models import (
     PolyPhaseParams,
@@ -54,13 +52,10 @@ from .tf_representation import ifs_to_ideal_tf, generate_binary_mask
 from .visualization import (
     save_image,
     save_array,
-    generate_and_display_pairs,
-    generate_and_display_pairs_convenience
+    generate_and_display_pairs
 )
 from .utils import (
     scan_directory_for_samples,
-    validate_array_file,
-    list_samples_in_scenario,
     extract_uuid_from_filename
 )
 from .exceptions import (
@@ -106,14 +101,9 @@ __all__ = [
     'save_image',
     'save_array',
     'generate_and_display_pairs',
-    'generate_and_display_pairs_convenience',
     'scan_directory_for_samples',
-    'validate_array_file',
-    'list_samples_in_scenario',
     'extract_uuid_from_filename',
     'generate_samples_by_scenario',
-    'generate_all_scenarios',
-    'generate_diverse_samples',
     'SyntheticDataError',
     'InvalidParameterError',
     'SignalGenerationError',

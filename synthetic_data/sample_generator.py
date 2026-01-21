@@ -219,29 +219,94 @@ def _generate_component_signals(
             q = gen_coschirp_params(rng, fmax=fmax)
             x, IF = coschirp_signal_and_if(t, q)
         elif sig_type == 'step_sine':
-            step_params = gen_step_sine_params(rng, freq_max=fmax if fmax else 1000.0)
+            fmax_val = fmax if fmax else 1000.0
+            # Use 5% of fmax as minimum to ensure better distribution
+            freq_min = max(1.0, 0.05 * fmax_val)
+            # Add randomness: 3-6 steps, variable time ranges
+            n_steps = rng.integers(3, 7)
+            duration = t[-1] - t[0] if len(t) > 1 else t[0]
+            time_min = rng.uniform(0.1 * duration, 0.2 * duration)
+            time_max = rng.uniform(0.7 * duration, 0.9 * duration)
+            step_params = gen_step_sine_params(
+                rng, n_steps=n_steps, freq_min=freq_min, freq_max=fmax_val,
+                time_min=time_min, time_max=time_max
+            )
             x, IF = step_sine_signal_and_if(t, step_params)
         elif sig_type == 'freq_jump':
-            jump_params = gen_freq_jump_params(rng, freq_max=fmax if fmax else 2000.0)
+            fmax_val = fmax if fmax else 2000.0
+            # Use 5% of fmax as minimum to ensure better distribution
+            freq_min = max(1.0, 0.05 * fmax_val)
+            # Add randomness: variable time ranges for jumps
+            duration = t[-1] - t[0] if len(t) > 1 else t[0]
+            time_min = rng.uniform(0.1 * duration, 0.2 * duration)
+            time_max = rng.uniform(0.7 * duration, 0.9 * duration)
+            jump_params = gen_freq_jump_params(
+                rng, freq_min=freq_min, freq_max=fmax_val,
+                time_min=time_min, time_max=time_max
+            )
             x, IF = freq_jump_signal_and_if(t, jump_params)
         elif sig_type == 'sawtooth_mod':
+            fmax_val = fmax if fmax else 2000.0
+            # Use 5% of fmax as minimum to ensure better distribution
+            freq_min = max(1.0, 0.05 * fmax_val)
+            # Add randomness: variable modulation frequency and depth ranges
+            mod_freq_max = rng.uniform(5.0, 15.0)
+            mod_depth_min = rng.uniform(0.05, 0.2)
+            mod_depth_max = rng.uniform(0.6, 0.95)
             sawtooth_params = gen_sawtooth_mod_params(
-                rng, base_freq_range=(1.0, fmax if fmax else 2000.0)
+                rng,
+                mod_freq_range=(0.1, mod_freq_max),
+                mod_depth_range=(mod_depth_min, mod_depth_max),
+                base_freq_range=(freq_min, fmax_val)
             )
             x, IF = sawtooth_mod_signal_and_if(t, sawtooth_params)
         elif sig_type == 'square_mod':
+            fmax_val = fmax if fmax else 2000.0
+            # Use 5% of fmax as minimum to ensure better distribution
+            freq_min = max(1.0, 0.05 * fmax_val)
+            # Add randomness: variable modulation frequency, duty cycle, and depth
+            mod_freq_max = rng.uniform(5.0, 15.0)
+            duty_cycle_min = rng.uniform(0.1, 0.3)
+            duty_cycle_max = rng.uniform(0.6, 0.9)
+            mod_depth_min = rng.uniform(0.05, 0.2)
+            mod_depth_max = rng.uniform(0.6, 0.95)
             square_params = gen_square_mod_params(
-                rng, base_freq_range=(1.0, fmax if fmax else 2000.0)
+                rng,
+                mod_freq_range=(0.1, mod_freq_max),
+                duty_cycle_range=(duty_cycle_min, duty_cycle_max),
+                mod_depth_range=(mod_depth_min, mod_depth_max),
+                base_freq_range=(freq_min, fmax_val)
             )
             x, IF = square_mod_signal_and_if(t, square_params)
         elif sig_type == 'phase_jump':
+            fmax_val = fmax if fmax else 2000.0
+            # Use 5% of fmax as minimum to ensure better distribution
+            freq_min = max(1.0, 0.05 * fmax_val)
+            # Add randomness: variable time ranges and jump sizes
+            duration = t[-1] - t[0] if len(t) > 1 else t[0]
+            time_min = rng.uniform(0.1 * duration, 0.2 * duration)
+            time_max = rng.uniform(0.7 * duration, 0.9 * duration)
+            jump_size_max = rng.uniform(1.5, 3.0)
             phase_params = gen_phase_jump_params(
-                rng, base_freq_range=(1.0, fmax if fmax else 2000.0)
+                rng,
+                base_freq_range=(freq_min, fmax_val),
+                jump_size_range=(0.1, jump_size_max),
+                time_min=time_min, time_max=time_max
             )
             x, IF = phase_jump_signal_and_if(t, phase_params)
         elif sig_type == 'amplitude_mod':
+            fmax_val = fmax if fmax else 2000.0
+            # Use 5% of fmax as minimum to ensure better distribution
+            freq_min = max(1.0, 0.05 * fmax_val)
+            # Add randomness: variable modulation frequency and depth
+            mod_freq_max = rng.uniform(5.0, 15.0)
+            mod_depth_min = rng.uniform(0.05, 0.2)
+            mod_depth_max = rng.uniform(0.6, 0.95)
             amp_params = gen_amplitude_mod_params(
-                rng, base_freq_range=(1.0, fmax if fmax else 2000.0)
+                rng,
+                mod_freq_range=(0.1, mod_freq_max),
+                mod_depth_range=(mod_depth_min, mod_depth_max),
+                base_freq_range=(freq_min, fmax_val)
             )
             x, IF = amplitude_mod_signal_and_if(t, amp_params)
         else:
